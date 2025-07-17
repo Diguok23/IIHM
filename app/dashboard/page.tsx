@@ -1,9 +1,5 @@
 "use client"
 
-import { Calendar } from "@/components/ui/calendar"
-
-import { CardFooter } from "@/components/ui/card"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
@@ -11,54 +7,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { BookOpen, BadgeIcon as Certificate, Clock, Users, TrendingUp, Award } from "lucide-react"
+import { BookOpen, Clock, Users, TrendingUp, Award, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 
+interface Application {
+  id: string
+  program_name: string
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  certification_id?: string
+}
+
+interface Enrollment {
+  id: string
+  certification_id: string
+  status: "pending" | "active" | "completed"
+  progress: number
+  created_at: string
+  certification: {
+    title: string
+    category: string
+  }
+}
+
 interface DashboardStats {
-  totalCourses: number
-  enrolledCourses: number
-  completedCourses: number
   totalApplications: number
   pendingApplications: number
   approvedApplications: number
-}
-
-interface RecentActivity {
-  id: string
-  type: "enrollment" | "completion" | "application"
-  title: string
-  date: string
-  status?: string
-}
-
-interface Course {
-  id: string
-  title: string
-  progress: number
-}
-
-interface ScheduleItem {
-  id: string
-  title: string
-  start_time: string
-  event_type: string
+  rejectedApplications: number
+  activeCourses: number
+  completedCourses: number
+  totalProgress: number
 }
 
 export default function DashboardPage() {
   const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [applications, setApplications] = useState<Application[]>([])
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [stats, setStats] = useState<DashboardStats>({
-    totalCourses: 0,
-    enrolledCourses: 0,
-    completedCourses: 0,
     totalApplications: 0,
     pendingApplications: 0,
     approvedApplications: 0,
+    rejectedApplications: 0,
+    activeCourses: 0,
+    completedCourses: 0,
+    totalProgress: 0,
   })
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [recentCourses, setRecentCourses] = useState<Course[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<ScheduleItem[]>([])
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -69,108 +65,76 @@ export default function DashboardPage() {
         const {
           data: { user: currentUser },
         } = await supabase.auth.getUser()
-        if (!currentUser) return
+
+        if (!currentUser) {
+          router.push("/login")
+          return
+        }
 
         setUser(currentUser)
 
         // Fetch user's applications
-        const { data: applications } = await supabase
+        const { data: applicationsData, error: applicationsError } = await supabase
           .from("applications")
           .select("*")
           .eq("email", currentUser.email)
           .order("created_at", { ascending: false })
 
-        // Fetch user's course enrollments (if table exists)
-        const { data: enrollments } = await supabase
-          .from("course_enrollments")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .order("created_at", { ascending: false })
+        if (applicationsError) {
+          console.error("Error fetching applications:", applicationsError)
+        }
 
-        // Fetch total available courses/certifications
-        const { data: certifications } = await supabase.from("certifications").select("id")
+        const userApplications = applicationsData || []
+        setApplications(userApplications)
 
-        // Calculate stats
-        const totalApplications = applications?.length || 0
-        const pendingApplications = applications?.filter((app) => app.status === "pending").length || 0
-        const approvedApplications = applications?.filter((app) => app.status === "approved").length || 0
-        const enrolledCourses = enrollments?.length || 0
-        const completedCourses = enrollments?.filter((enrollment) => enrollment.status === "completed").length || 0
-
-        setStats({
-          totalCourses: certifications?.length || 0,
-          enrolledCourses,
-          completedCourses,
-          totalApplications,
-          pendingApplications,
-          approvedApplications,
-        })
-
-        // Create recent activity from applications and enrollments
-        const activities: RecentActivity[] = []
-
-        // Add applications to activity
-        applications?.slice(0, 3).forEach((app) => {
-          activities.push({
-            id: app.id,
-            type: "application",
-            title: `Application for ${app.certification_name || "Certification"}`,
-            date: new Date(app.created_at).toLocaleDateString(),
-            status: app.status,
-          })
-        })
-
-        // Add enrollments to activity
-        enrollments?.slice(0, 2).forEach((enrollment) => {
-          activities.push({
-            id: enrollment.id,
-            type: enrollment.status === "completed" ? "completion" : "enrollment",
-            title: `Course: ${enrollment.course_name || "Professional Course"}`,
-            date: new Date(enrollment.created_at).toLocaleDateString(),
-            status: enrollment.status,
-          })
-        })
-
-        // Sort by date and take most recent
-        activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        setRecentActivity(activities.slice(0, 5))
-
-        // Fetch user courses with error handling
-        const { data: coursesData } = await supabase
-          .from("user_courses")
+        // Fetch user's course enrollments
+        const { data: enrollmentsData, error: enrollmentsError } = await supabase
+          .from("user_enrollments")
           .select(`
-            course_id,
-            progress,
+            id,
+            certification_id,
             status,
-            last_accessed,
-            certifications:course_id(
-              id,
-              title
+            progress,
+            created_at,
+            certifications:certification_id (
+              title,
+              category
             )
           `)
           .eq("user_id", currentUser.id)
-          .order("last_accessed", { ascending: false })
+          .order("created_at", { ascending: false })
 
-        // Format recent courses
-        const formattedCourses =
-          coursesData?.slice(0, 3).map((item) => ({
-            id: item.course_id,
-            title: item.certifications?.title || "Unknown Course",
-            progress: item.progress || 0,
-          })) || []
+        if (enrollmentsError) {
+          console.error("Error fetching enrollments:", enrollmentsError)
+        }
 
-        setRecentCourses(formattedCourses)
+        const userEnrollments = enrollmentsData || []
+        setEnrollments(userEnrollments)
 
-        // Fetch upcoming schedule items with error handling
-        const { data: scheduleData } = await supabase
-          .from("user_schedules")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .gte("start_time", new Date().toISOString())
-          .order("start_time")
-          .limit(3)
+        // Calculate stats
+        const totalApplications = userApplications.length
+        const pendingApplications = userApplications.filter((app) => app.status === "pending").length
+        const approvedApplications = userApplications.filter((app) => app.status === "approved").length
+        const rejectedApplications = userApplications.filter((app) => app.status === "rejected").length
 
-        setUpcomingEvents(scheduleData || [])
+        const activeCourses = userEnrollments.filter((enrollment) => enrollment.status === "active").length
+        const completedCourses = userEnrollments.filter((enrollment) => enrollment.status === "completed").length
+        const totalProgress =
+          userEnrollments.length > 0
+            ? Math.round(
+                userEnrollments.reduce((sum, enrollment) => sum + enrollment.progress, 0) / userEnrollments.length,
+              )
+            : 0
+
+        setStats({
+          totalApplications,
+          pendingApplications,
+          approvedApplications,
+          rejectedApplications,
+          activeCourses,
+          completedCourses,
+          totalProgress,
+        })
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -181,51 +145,44 @@ export default function DashboardPage() {
     fetchDashboardData()
   }, [router])
 
-  const getProgressPercentage = () => {
-    if (stats.enrolledCourses === 0) return 0
-    return Math.round((stats.completedCourses / stats.enrolledCourses) * 100)
-  }
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "enrollment":
-        return <BookOpen className="h-4 w-4 text-blue-500" />
-      case "completion":
-        return <Award className="h-4 w-4 text-green-500" />
-      case "application":
-        return <Certificate className="h-4 w-4 text-purple-500" />
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="h-4 w-4 text-yellow-500" />
+      case "approved":
+      case "active":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "rejected":
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case "completed":
+        return <Award className="h-4 w-4 text-blue-500" />
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />
+        return <AlertCircle className="h-4 w-4 text-gray-500" />
     }
   }
 
-  const getStatusBadge = (status?: string) => {
-    if (!status) return null
-
+  const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       pending: "outline",
       approved: "default",
       rejected: "destructive",
-      completed: "default",
-      in_progress: "secondary",
+      active: "default",
+      completed: "secondary",
+    }
+
+    const colors: Record<string, string> = {
+      pending: "text-yellow-700 bg-yellow-50 border-yellow-200",
+      approved: "text-green-700 bg-green-50 border-green-200",
+      rejected: "text-red-700 bg-red-50 border-red-200",
+      active: "text-blue-700 bg-blue-50 border-blue-200",
+      completed: "text-purple-700 bg-purple-50 border-purple-200",
     }
 
     return (
-      <Badge variant={variants[status] || "outline"} className="text-xs">
-        {status.replace("_", " ").toUpperCase()}
+      <Badge variant={variants[status] || "outline"} className={`text-xs ${colors[status] || ""}`}>
+        {status.toUpperCase()}
       </Badge>
     )
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
   }
 
   if (isLoading) {
@@ -263,22 +220,22 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Courses</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCourses}</div>
-            <p className="text-xs text-muted-foreground">Professional certifications</p>
+            <div className="text-2xl font-bold">{stats.totalApplications}</div>
+            <p className="text-xs text-muted-foreground">{stats.pendingApplications} pending approval</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Courses</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.enrolledCourses}</div>
+            <div className="text-2xl font-bold">{stats.activeCourses}</div>
             <p className="text-xs text-muted-foreground">Currently enrolled</p>
           </CardContent>
         </Card>
@@ -286,7 +243,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <Certificate className="h-4 w-4 text-muted-foreground" />
+            <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.completedCourses}</div>
@@ -296,106 +253,81 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Applications</CardTitle>
+            <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalApplications}</div>
-            <p className="text-xs text-muted-foreground">{stats.pendingApplications} pending</p>
+            <div className="text-2xl font-bold">{stats.totalProgress}%</div>
+            <p className="text-xs text-muted-foreground">Across all courses</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Progress and Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Learning Progress</CardTitle>
-            <CardDescription>Your overall progress across all enrolled courses</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Course Completion</span>
-                <span>{getProgressPercentage()}%</span>
-              </div>
-              <Progress value={getProgressPercentage()} className="h-2" />
-            </div>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.enrolledCourses}</div>
-                <div className="text-xs text-muted-foreground">Enrolled</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-yellow-600">
-                  {stats.enrolledCourses - stats.completedCourses}
-                </div>
-                <div className="text-xs text-muted-foreground">In Progress</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-green-600">{stats.completedCourses}</div>
-                <div className="text-xs text-muted-foreground">Completed</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Get started with your learning journey</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button asChild className="w-full">
-              <Link href="/certifications">
-                <BookOpen className="mr-2 h-4 w-4" />
-                Browse Certifications
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full bg-transparent">
-              <Link href="/apply">
-                <Certificate className="mr-2 h-4 w-4" />
-                Submit Application
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full bg-transparent">
-              <Link href="/dashboard/courses">
-                <Users className="mr-2 h-4 w-4" />
-                My Courses
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
+      {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Your latest applications and course activities</CardDescription>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Get started with your learning journey</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <Button asChild className="w-full">
+            <Link href="/certifications">
+              <BookOpen className="mr-2 h-4 w-4" />
+              Browse Certifications
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="w-full bg-transparent">
+            <Link href="/apply">
+              <Users className="mr-2 h-4 w-4" />
+              Submit Application
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="w-full bg-transparent">
+            <Link href="/dashboard/courses">
+              <Award className="mr-2 h-4 w-4" />
+              My Courses
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Applications Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>My Applications</CardTitle>
+          <CardDescription>Track the status of your certification applications</CardDescription>
         </CardHeader>
         <CardContent>
-          {recentActivity.length > 0 ? (
+          {applications.length > 0 ? (
             <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 border rounded-lg">
+              {applications.map((application) => (
+                <div key={application.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-3">
-                    {getActivityIcon(activity.type)}
+                    {getStatusIcon(application.status)}
                     <div>
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">{activity.date}</p>
+                      <p className="text-sm font-medium">{application.program_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Applied on {new Date(application.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
-                  {getStatusBadge(activity.status)}
+                  <div className="flex items-center space-x-2">
+                    {getStatusBadge(application.status)}
+                    {application.status === "approved" && (
+                      <Button size="sm" variant="outline">
+                        Start Course
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-6">
-              <Clock className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No recent activity</h3>
+            <div className="text-center py-8">
+              <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No applications yet</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Start by browsing our certifications or submitting an application.
+                Start by browsing our certifications and submitting an application.
               </p>
               <div className="mt-6">
                 <Button asChild>
@@ -410,114 +342,73 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Courses */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Recent Courses</h2>
-        <Card className="mb-4">
-          <CardContent className="p-0">
-            {recentCourses.length > 0 ? (
-              <ul className="divide-y">
-                {recentCourses.map((course) => (
-                  <li key={course.id} className="p-4">
-                    <Link href={`/dashboard/courses/${course.id}`} className="block hover:bg-gray-50 -m-4 p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-medium">{course.title}</h3>
-                        <Clock className="h-4 w-4 text-gray-400" />
-                      </div>
-                      <div className="mb-1">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span>Progress</span>
-                          <span>{course.progress}%</span>
-                        </div>
-                        <Progress value={course.progress} className="h-2" />
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-8">
-                <BookOpen className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-gray-500">You haven't enrolled in any courses yet</p>
-                <Button
-                  variant="outline"
-                  className="mt-4 bg-transparent"
-                  onClick={() => router.push("/certifications")}
-                >
-                  Browse Courses
-                </Button>
-              </div>
-            )}
-          </CardContent>
-          {recentCourses.length > 0 && (
-            <CardFooter className="border-t px-4 py-3">
-              <Button
-                variant="ghost"
-                className="w-full justify-center text-blue-600"
-                onClick={() => router.push("/dashboard/courses")}
-              >
-                View All Courses
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
-      </div>
-
-      {/* Upcoming Schedule */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Upcoming Schedule</h2>
+      {/* Active Courses */}
+      {enrollments.length > 0 && (
         <Card>
-          <CardContent className="p-0">
-            {upcomingEvents.length > 0 ? (
-              <ul className="divide-y">
-                {upcomingEvents.map((event) => (
-                  <li key={event.id} className="p-4">
-                    <div className="flex items-start">
-                      <div
-                        className={`p-2 rounded-full mr-3 ${
-                          event.event_type === "class"
-                            ? "bg-blue-100 text-blue-600"
-                            : event.event_type === "exam"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-green-100 text-green-600"
-                        }`}
-                      >
-                        {event.event_type === "class" ? (
-                          <BookOpen className="h-4 w-4" />
-                        ) : event.event_type === "exam" ? (
-                          <Clock className="h-4 w-4" />
-                        ) : (
-                          <Calendar className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{event.title}</h3>
-                        <p className="text-sm text-gray-500">{formatDate(event.start_time)}</p>
-                      </div>
+          <CardHeader>
+            <CardTitle>My Courses</CardTitle>
+            <CardDescription>Continue your learning journey</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {enrollments.map((enrollment) => (
+                <div key={enrollment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {getStatusIcon(enrollment.status)}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{enrollment.certification.title}</p>
+                      <p className="text-xs text-muted-foreground mb-2">{enrollment.certification.category}</p>
+                      {enrollment.status === "active" && (
+                        <div className="w-full max-w-xs">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span>Progress</span>
+                            <span>{enrollment.progress}%</span>
+                          </div>
+                          <Progress value={enrollment.progress} className="h-2" />
+                        </div>
+                      )}
                     </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-8">
-                <Calendar className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-gray-500">No upcoming events</p>
-              </div>
-            )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusBadge(enrollment.status)}
+                    {enrollment.status === "active" && (
+                      <Button size="sm" asChild>
+                        <Link href={`/dashboard/courses/${enrollment.certification_id}`}>Continue</Link>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
-          {upcomingEvents.length > 0 && (
-            <CardFooter className="border-t px-4 py-3">
-              <Button
-                variant="ghost"
-                className="w-full justify-center text-blue-600"
-                onClick={() => router.push("/dashboard/schedule")}
-              >
-                View Full Schedule
-              </Button>
-            </CardFooter>
-          )}
         </Card>
-      </div>
+      )}
+
+      {/* Information Card */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="text-blue-900">How It Works</CardTitle>
+        </CardHeader>
+        <CardContent className="text-blue-800">
+          <div className="space-y-2 text-sm">
+            <p>
+              <strong>1. Apply:</strong> Submit an application for your desired certification
+            </p>
+            <p>
+              <strong>2. Review:</strong> Our admin team will review your application
+            </p>
+            <p>
+              <strong>3. Approval:</strong> Once approved, you can access the course materials
+            </p>
+            <p>
+              <strong>4. Learn:</strong> Complete the course at your own pace
+            </p>
+            <p>
+              <strong>5. Certify:</strong> Earn your professional certification upon completion
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

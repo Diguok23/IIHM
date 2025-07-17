@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Menu, X, User } from "lucide-react"
+import { Menu, X, User, LogIn, UserPlus } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 
@@ -60,7 +60,7 @@ export default function Header() {
     setIsMenuOpen(!isMenuOpen)
   }
 
-  const isActive = (path) => {
+  const isActive = (path: string) => {
     return pathname === path
   }
 
@@ -102,28 +102,36 @@ export default function Header() {
 
             {!isLoading &&
               (user ? (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
                   <Button variant="outline" asChild>
                     <Link href="/dashboard">
                       <User className="h-4 w-4 mr-2" />
                       Dashboard
                     </Link>
                   </Button>
-                  <Button variant="ghost" onClick={handleLogout}>
+                  <Button variant="ghost" onClick={handleLogout} size="sm">
                     Logout
                   </Button>
                 </div>
               ) : (
-                <Button asChild>
-                  <Link href="/login">
-                    <User className="h-4 w-4 mr-2" />
-                    Login
-                  </Link>
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" asChild size="sm">
+                    <Link href="/login">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Login
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link href="/login">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Sign Up
+                    </Link>
+                  </Button>
+                </div>
               ))}
 
             <Link href="/apply">
-              <Button>Apply Now</Button>
+              <Button className="ml-2">Apply Now</Button>
             </Link>
           </nav>
 
@@ -172,7 +180,7 @@ export default function Header() {
               (user ? (
                 <>
                   <Link href="/dashboard" className="block py-2" onClick={toggleMenu}>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full bg-transparent">
                       <User className="h-4 w-4 mr-2" />
                       Dashboard
                     </Button>
@@ -184,16 +192,24 @@ export default function Header() {
                   </div>
                 </>
               ) : (
-                <Link href="/login" className="block py-2" onClick={toggleMenu}>
-                  <Button className="w-full">
-                    <User className="h-4 w-4 mr-2" />
-                    Login
-                  </Button>
-                </Link>
+                <div className="space-y-2">
+                  <Link href="/login" className="block" onClick={toggleMenu}>
+                    <Button variant="outline" className="w-full bg-transparent">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Login
+                    </Button>
+                  </Link>
+                  <Link href="/login" className="block" onClick={toggleMenu}>
+                    <Button className="w-full">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
               ))}
 
-            <Link href="/apply" className="block" onClick={toggleMenu}>
-              <Button className="w-full mt-3">Apply Now</Button>
+            <Link href="/apply" className="block pt-2" onClick={toggleMenu}>
+              <Button className="w-full">Apply Now</Button>
             </Link>
           </div>
         </div>
