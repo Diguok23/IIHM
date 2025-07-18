@@ -1,10 +1,15 @@
-import { createServerSupabaseClient } from "@/lib/supabase"
 import { type NextRequest, NextResponse } from "next/server"
+import { createSupabaseClient } from "@/lib/supabase"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient()
     const { certificationId } = await request.json()
+
+    if (!certificationId) {
+      return NextResponse.json({ error: "Certification ID is required" }, { status: 400 })
+    }
+
+    const supabase = createSupabaseClient()
 
     // Get current user
     const {
@@ -13,27 +18,24 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
     // Check if user has an approved application for this certification
-    const { data: application, error: applicationError } = await supabase
+    const { data: application, error: appError } = await supabase
       .from("applications")
       .select("*")
       .eq("email", user.email)
-      .eq("program_name", certificationId) // This should match certification title
+      .eq("certification_id", certificationId)
       .eq("status", "approved")
       .single()
 
-    if (applicationError || !application) {
-      return NextResponse.json(
-        { error: "You must have an approved application to enroll in this course" },
-        { status: 403 },
-      )
+    if (appError || !application) {
+      return NextResponse.json({ error: "No approved application found for this certification" }, { status: 403 })
     }
 
     // Check if user is already enrolled
-    const { data: existingEnrollment } = await supabase
+    const { data: existingEnrollment, error: enrollmentCheckError } = await supabase
       .from("user_enrollments")
       .select("*")
       .eq("user_id", user.id)
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (existingEnrollment) {
-      return NextResponse.json({ error: "Already enrolled in this course" }, { status: 400 })
+      return NextResponse.json({ error: "Already enrolled in this certification" }, { status: 409 })
     }
 
     // Create enrollment
@@ -52,18 +54,23 @@ export async function POST(request: NextRequest) {
         certification_id: certificationId,
         status: "active",
         progress: 0,
+        started_at: new Date().toISOString(),
       })
       .select()
       .single()
 
     if (enrollmentError) {
       console.error("Enrollment error:", enrollmentError)
-      return NextResponse.json({ error: "Failed to enroll in course" }, { status: 500 })
+      return NextResponse.json({ error: "Failed to create enrollment" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, enrollment })
+    return NextResponse.json({
+      success: true,
+      enrollment,
+      message: "Successfully enrolled in certification",
+    })
   } catch (error) {
-    console.error("Enrollment error:", error)
+    console.error("Enroll API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

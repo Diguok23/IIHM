@@ -3,120 +3,114 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   BookOpen,
+  LayoutDashboard,
+  GraduationCap,
+  FileText,
+  Settings,
+  User,
   Calendar,
+  Award,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
-  FileText,
-  Home,
-  MessageSquare,
-  Settings,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+
+const sidebarItems = [
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "My Certifications",
+    href: "/dashboard/certifications",
+    icon: GraduationCap,
+  },
+  {
+    title: "My Courses",
+    href: "/dashboard/courses",
+    icon: BookOpen,
+  },
+  {
+    title: "Applications",
+    href: "/dashboard/applications",
+    icon: FileText,
+  },
+  {
+    title: "Schedule",
+    href: "/dashboard/schedule",
+    icon: Calendar,
+  },
+  {
+    title: "Certificates",
+    href: "/dashboard/certificates",
+    icon: Award,
+  },
+  {
+    title: "Profile",
+    href: "/dashboard/profile",
+    icon: User,
+  },
+  {
+    title: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+  },
+]
 
 export default function DashboardSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
-
-  const isActive = (path) => {
-    return pathname === path || pathname?.startsWith(path + "/")
-  }
-
-  const navItems = [
-    {
-      name: "Dashboard",
-      href: "/dashboard",
-      icon: Home,
-    },
-    {
-      name: "My Courses",
-      href: "/dashboard/courses",
-      icon: BookOpen,
-    },
-    {
-      name: "Certifications",
-      href: "/dashboard/certifications",
-      icon: FileText,
-    },
-    {
-      name: "Schedule",
-      href: "/dashboard/schedule",
-      icon: Calendar,
-    },
-    {
-      name: "Assignments",
-      href: "/dashboard/assignments",
-      icon: FileText,
-    },
-    {
-      name: "Messages",
-      href: "/dashboard/messages",
-      icon: MessageSquare,
-    },
-    {
-      name: "Billing",
-      href: "/dashboard/billing",
-      icon: CreditCard,
-    },
-    {
-      name: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
-  ]
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   return (
-    <aside
+    <div
       className={cn(
-        "bg-white border-r transition-all duration-300 ease-in-out h-[calc(100vh-4rem)] sticky top-16",
-        collapsed ? "w-16" : "w-64",
+        "relative flex flex-col border-r bg-white transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64",
       )}
     >
-      <div className="flex flex-col h-full">
-        <div className="p-4 flex justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
-
-        <nav className="flex-1 px-2 py-4 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-              )}
-            >
-              <item.icon className={cn("h-5 w-5", collapsed ? "mx-auto" : "mr-3")} />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="p-4">
-          <div className={cn("bg-primary/10 text-primary rounded-md p-3", collapsed ? "text-center" : "text-left")}>
-            {!collapsed && (
-              <>
-                <h4 className="font-medium">Need Help?</h4>
-                <p className="text-xs mt-1">Contact our support team for assistance.</p>
-              </>
-            )}
-            {collapsed && <MessageSquare className="h-5 w-5 mx-auto" />}
-          </div>
-        </div>
+      <div className="flex h-16 items-center justify-between px-4 border-b">
+        {!isCollapsed && <h2 className="text-lg font-semibold text-gray-900">Navigation</h2>}
+        <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
       </div>
-    </aside>
+
+      <ScrollArea className="flex-1 px-3 py-4">
+        <nav className="space-y-2">
+          {sidebarItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full justify-start",
+                    isCollapsed ? "px-2" : "px-3",
+                    isActive && "bg-primary/10 text-primary",
+                  )}
+                >
+                  <item.icon className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />
+                  {!isCollapsed && <span>{item.title}</span>}
+                </Button>
+              </Link>
+            )
+          })}
+        </nav>
+      </ScrollArea>
+
+      <div className="border-t p-4">
+        <Button variant="outline" className={cn("w-full", isCollapsed ? "px-2" : "px-3")} asChild>
+          <Link href="/certifications">
+            <BookOpen className={cn("h-4 w-4", isCollapsed ? "" : "mr-2")} />
+            {!isCollapsed && "Browse All"}
+          </Link>
+        </Button>
+      </div>
+    </div>
   )
 }

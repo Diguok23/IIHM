@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -41,7 +40,6 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [applications, setApplications] = useState<Application[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
@@ -57,6 +55,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+
     const fetchDashboardData = async () => {
       try {
         const supabase = createSupabaseClient()
@@ -66,10 +66,7 @@ export default function DashboardPage() {
           data: { user: currentUser },
         } = await supabase.auth.getUser()
 
-        if (!currentUser) {
-          router.push("/login")
-          return
-        }
+        if (!mounted || !currentUser) return
 
         setUser(currentUser)
 
@@ -79,6 +76,8 @@ export default function DashboardPage() {
           .select("*")
           .eq("email", currentUser.email)
           .order("created_at", { ascending: false })
+
+        if (!mounted) return
 
         if (applicationsError) {
           console.error("Error fetching applications:", applicationsError)
@@ -104,6 +103,8 @@ export default function DashboardPage() {
           .eq("user_id", currentUser.id)
           .order("created_at", { ascending: false })
 
+        if (!mounted) return
+
         if (enrollmentsError) {
           console.error("Error fetching enrollments:", enrollmentsError)
         }
@@ -126,24 +127,34 @@ export default function DashboardPage() {
               )
             : 0
 
-        setStats({
-          totalApplications,
-          pendingApplications,
-          approvedApplications,
-          rejectedApplications,
-          activeCourses,
-          completedCourses,
-          totalProgress,
-        })
+        if (mounted) {
+          setStats({
+            totalApplications,
+            pendingApplications,
+            approvedApplications,
+            rejectedApplications,
+            activeCourses,
+            completedCourses,
+            totalProgress,
+          })
+        }
       } catch (error) {
-        console.error("Error fetching dashboard data:", error)
+        if (mounted) {
+          console.error("Error fetching dashboard data:", error)
+        }
       } finally {
-        setIsLoading(false)
+        if (mounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchDashboardData()
-  }, [router])
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -314,8 +325,8 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-2">
                     {getStatusBadge(application.status)}
                     {application.status === "approved" && (
-                      <Button size="sm" variant="outline">
-                        Start Course
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href="/dashboard/certifications">Start Course</Link>
                       </Button>
                     )}
                   </div>

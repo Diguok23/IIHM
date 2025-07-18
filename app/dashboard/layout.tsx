@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Loader2 } from "lucide-react"
 import DashboardHeader from "@/components/dashboard-header"
@@ -15,67 +14,106 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [authChecked, setAuthChecked] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    let isMounted = true
+    let mounted = true
+    let authSubscription: any = null
 
-    const checkAuth = async () => {
+    const initAuth = async () => {
       try {
         const supabase = createSupabaseClient()
 
+        // Get initial session
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession()
 
-        if (!isMounted) return
+        if (!mounted) return
 
         if (error) {
-          console.error("Auth error:", error)
-          router.push("/login")
+          console.error("Session error:", error)
+          if (!isRedirecting) {
+            setIsRedirecting(true)
+            router.replace("/login")
+          }
           return
         }
 
         if (!session?.user) {
-          router.push("/login")
+          if (!isRedirecting) {
+            setIsRedirecting(true)
+            router.replace("/login")
+          }
           return
         }
 
-        setAuthChecked(true)
+        setUser(session.user)
+        setIsLoading(false)
+
+        // Set up auth state listener
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return
+
+          if (event === "SIGNED_OUT" || !session) {
+            setUser(null)
+            if (!isRedirecting) {
+              setIsRedirecting(true)
+              router.replace("/login")
+            }
+          } else if (session?.user) {
+            setUser(session.user)
+            setIsLoading(false)
+          }
+        })
+
+        authSubscription = subscription
       } catch (error) {
-        if (!isMounted) return
-        console.error("Auth check failed:", error)
-        router.push("/login")
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
+        if (!mounted) return
+        console.error("Auth initialization error:", error)
+        if (!isRedirecting) {
+          setIsRedirecting(true)
+          router.replace("/login")
         }
       }
     }
 
-    checkAuth()
+    initAuth()
 
     return () => {
-      isMounted = false
+      mounted = false
+      if (authSubscription) {
+        authSubscription.unsubscribe()
+      }
     }
-  }, [router])
+  }, [router, pathname, isRedirecting])
 
-  if (isLoading || !authChecked) {
+  // Show loading while checking auth
+  if (isLoading || isRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-sm text-gray-600">Loading dashboard...</span>
+          <span className="text-sm text-gray-600">{isRedirecting ? "Redirecting..." : "Loading dashboard..."}</span>
         </div>
       </div>
     )
   }
 
+  // Don't render if no user
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
+      <DashboardHeader user={user} />
       <div className="flex">
         <DashboardSidebar />
         <main className="flex-1 p-6">{children}</main>
