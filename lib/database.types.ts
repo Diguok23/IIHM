@@ -5,275 +5,246 @@ export type Database = {
     Tables: {
       applications: {
         Row: {
-          address: string | null
-          certification_id: string | null
-          created_at: string
-          email: string | null
-          first_name: string | null
           id: string
-          last_name: string | null
-          phone_number: string | null
-          status: Database["public"]["Enums"]["application_status"]
+          user_id: string
+          certification_id: string
+          full_name: string
+          email: string
+          phone: string
+          country: string
+          education_level: string
+          work_experience: string
+          motivation: string
+          status: "pending" | "approved" | "rejected"
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          address?: string | null
-          certification_id?: string | null
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
           id?: string
-          last_name?: string | null
-          phone_number?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
+          user_id: string
+          certification_id: string
+          full_name: string
+          email: string
+          phone: string
+          country: string
+          education_level: string
+          work_experience: string
+          motivation: string
+          status?: "pending" | "approved" | "rejected"
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          address?: string | null
-          certification_id?: string | null
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
           id?: string
-          last_name?: string | null
-          phone_number?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
+          user_id?: string
+          certification_id?: string
+          full_name?: string
+          email?: string
+          phone?: string
+          country?: string
+          education_level?: string
+          work_experience?: string
+          motivation?: string
+          status?: "pending" | "approved" | "rejected"
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "applications_certification_id_fkey"
-            columns: ["certification_id"]
-            isOneToOne: false
-            referencedRelation: "certifications"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       certifications: {
         Row: {
-          created_at: string
-          description: string | null
-          duration_days: number | null
           id: string
-          image_url: string | null
-          name: string | null
-          price: number | null
+          title: string
+          description: string
+          price: number
+          duration: string
+          level: string
+          requirements: string[]
+          learning_outcomes: string[]
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string
-          description?: string | null
-          duration_days?: number | null
           id?: string
-          image_url?: string | null
-          name?: string | null
-          price?: number | null
+          title: string
+          description: string
+          price: number
+          duration: string
+          level: string
+          requirements: string[]
+          learning_outcomes: string[]
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string
-          description?: string | null
-          duration_days?: number | null
           id?: string
-          image_url?: string | null
-          name?: string | null
-          price?: number | null
+          title?: string
+          description?: string
+          price?: number
+          duration?: string
+          level?: string
+          requirements?: string[]
+          learning_outcomes?: string[]
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
       }
       lessons: {
         Row: {
-          content: string | null
-          created_at: string
           id: string
-          module_id: string | null
-          order_index: number | null
-          title: string | null
+          module_id: string
+          title: string
+          description: string
+          content: string
+          video_url: string | null
+          duration_minutes: number
+          order_index: number
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          content?: string | null
-          created_at?: string
           id?: string
-          module_id?: string | null
-          order_index?: number | null
-          title?: string | null
+          module_id: string
+          title: string
+          description: string
+          content: string
+          video_url?: string | null
+          duration_minutes: number
+          order_index: number
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          content?: string | null
-          created_at?: string
           id?: string
-          module_id?: string | null
-          order_index?: number | null
-          title?: string | null
+          module_id?: string
+          title?: string
+          description?: string
+          content?: string
+          video_url?: string | null
+          duration_minutes?: number
+          order_index?: number
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "lessons_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       modules: {
         Row: {
-          certification_id: string | null
-          created_at: string
           id: string
-          name: string | null
-          order_index: number | null
+          certification_id: string
+          title: string
+          description: string
+          order_index: number
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          certification_id?: string | null
-          created_at?: string
           id?: string
-          name?: string | null
-          order_index?: number | null
+          certification_id: string
+          title: string
+          description: string
+          order_index: number
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          certification_id?: string | null
-          created_at?: string
           id?: string
-          name?: string | null
-          order_index?: number | null
+          certification_id?: string
+          title?: string
+          description?: string
+          order_index?: number
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "modules_certification_id_fkey"
-            columns: ["certification_id"]
-            isOneToOne: false
-            referencedRelation: "certifications"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_enrollments: {
         Row: {
-          certificate_issued: boolean | null
+          id: string
+          user_id: string
+          certification_id: string
+          status: "enrolled" | "in_progress" | "completed" | "cancelled"
+          progress: number
+          enrolled_at: string
+          completed_at: string | null
+          certificate_issued: boolean
           certificate_url: string | null
+          payment_status: "pending" | "completed" | "failed" | "refunded"
+          payment_reference: string | null
           created_at: string
-          course_id: string | null
-          due_date: string | null
-          id: string
-          progress: number | null
-          status: Database["public"]["Enums"]["enrollment_status"]
-          user_id: string | null
+          updated_at: string
         }
         Insert: {
-          certificate_issued?: boolean | null
-          certificate_url?: string | null
-          created_at?: string
-          course_id?: string | null
-          due_date?: string | null
           id?: string
-          progress?: number | null
-          status?: Database["public"]["Enums"]["enrollment_status"]
-          user_id?: string | null
+          user_id: string
+          certification_id: string
+          status?: "enrolled" | "in_progress" | "completed" | "cancelled"
+          progress?: number
+          enrolled_at?: string
+          completed_at?: string | null
+          certificate_issued?: boolean
+          certificate_url?: string | null
+          payment_status?: "pending" | "completed" | "failed" | "refunded"
+          payment_reference?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          certificate_issued?: boolean | null
+          id?: string
+          user_id?: string
+          certification_id?: string
+          status?: "enrolled" | "in_progress" | "completed" | "cancelled"
+          progress?: number
+          enrolled_at?: string
+          completed_at?: string | null
+          certificate_issued?: boolean
           certificate_url?: string | null
+          payment_status?: "pending" | "completed" | "failed" | "refunded"
+          payment_reference?: string | null
           created_at?: string
-          course_id?: string | null
-          due_date?: string | null
-          id?: string
-          progress?: number | null
-          status?: Database["public"]["Enums"]["enrollment_status"]
-          user_id?: string | null
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_enrollments_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "certifications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_enrollments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_modules: {
-        Row: {
-          completed: boolean | null
-          created_at: string
-          id: string
-          module_id: string | null
-          user_enrollment_id: string | null
-        }
-        Insert: {
-          completed?: boolean | null
-          created_at?: string
-          id?: string
-          module_id?: string | null
-          user_enrollment_id?: string | null
-        }
-        Update: {
-          completed?: boolean | null
-          created_at?: string
-          id?: string
-          module_id?: string | null
-          user_enrollment_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_modules_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_modules_user_enrollment_id_fkey"
-            columns: ["user_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "user_enrollments"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_profiles: {
         Row: {
-          address: string | null
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: number
-          is_admin: boolean | null // Added is_admin
-          phone_number: string | null
+          id: string
           user_id: string
+          full_name: string | null
+          email: string | null
+          phone: string | null
+          country: string | null
+          education_level: string | null
+          work_experience: string | null
+          bio: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: number
-          is_admin?: boolean | null // Added is_admin
-          phone_number?: string | null
+          id?: string
           user_id: string
+          full_name?: string | null
+          email?: string | null
+          phone?: string | null
+          country?: string | null
+          education_level?: string | null
+          work_experience?: string | null
+          bio?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: number
-          is_admin?: boolean | null // Added is_admin
-          phone_number?: string | null
+          id?: string
           user_id?: string
+          full_name?: string | null
+          email?: string | null
+          phone?: string | null
+          country?: string | null
+          education_level?: string | null
+          work_experience?: string | null
+          bio?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_profiles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
@@ -283,11 +254,144 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      application_status: "pending" | "approved" | "rejected"
-      enrollment_status: "enrolled" | "completed" | "dropped"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
     }
+  }
+}
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    ? (Database["public"]["Tables"] & Database["public"]["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends keyof Database["public"]["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends keyof Database["public"]["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends keyof Database["public"]["Enums"] | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
+    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
+    : never
+
+// Additional type definitions for the application
+export interface UserEnrollment extends Tables<"user_enrollments"> {
+  certification?: Tables<"certifications">
+}
+
+export interface Application extends Tables<"applications"> {
+  certification?: Tables<"certifications">
+}
+
+export interface UserProfile extends Tables<"user_profiles"> {}
+
+export interface Certification extends Tables<"certifications"> {
+  modules?: Module[]
+}
+
+export interface Module extends Tables<"modules"> {
+  lessons?: Lesson[]
+}
+
+export interface Lesson extends Tables<"lessons"> {}
+
+// Dashboard data types
+export interface DashboardStats {
+  totalEnrollments: number
+  activeEnrollments: number
+  completedCertifications: number
+  pendingApplications: number
+}
+
+export interface EnrollmentWithCertification {
+  id: string
+  certification_id: string
+  status: "enrolled" | "in_progress" | "completed" | "cancelled"
+  progress: number
+  enrolled_at: string
+  completed_at: string | null
+  certificate_issued: boolean
+  certificate_url: string | null
+  payment_status: "pending" | "completed" | "failed" | "refunded"
+  certification: {
+    id: string
+    title: string
+    description: string
+    duration: string
+    level: string
+  }
+}
+
+export interface ApplicationWithCertification {
+  id: string
+  certification_id: string
+  full_name: string
+  email: string
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  certification: {
+    id: string
+    title: string
+    level: string
   }
 }

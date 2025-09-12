@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss"
 
-const config: Config = {
+const config = {
   darkMode: ["class"],
   content: [
     "./pages/**/*.{ts,tsx}",
@@ -9,6 +9,7 @@ const config: Config = {
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -52,29 +53,22 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        navy: {
-          50: "#f0f4f8",
-          100: "#d9e2ec",
-          200: "#bcccdc",
-          300: "#9fb3c8",
-          400: "#829ab1",
-          500: "#627d98",
-          600: "#486581",
-          700: "#334e68",
-          800: "#243b53",
-          900: "#102a43",
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
         },
-        amber: {
-          50: "#fffbeb",
-          100: "#fef3c7",
-          200: "#fde68a",
-          300: "#fcd34d",
-          400: "#fbbf24",
-          500: "#f59e0b",
-          600: "#d97706",
-          700: "#b45309",
-          800: "#92400e",
-          900: "#78350f",
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
         },
       },
       borderRadius: {
@@ -91,14 +85,38 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "collapsible-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-collapsible-content-height)" },
+        },
+        "collapsible-up": {
+          from: { height: "var(--radix-collapsible-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "collapsible-down": "collapsible-down 0.2s ease-out",
+        "collapsible-up": "collapsible-up 0.2s ease-out",
+      },
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+      },
+      spacing: {
+        "18": "4.5rem",
+        "88": "22rem",
+      },
+      maxWidth: {
+        "8xl": "88rem",
+        "9xl": "96rem",
+      },
+      screens: {
+        xs: "475px",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
-}
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/forms"), require("@tailwindcss/typography")],
+} satisfies Config
 
 export default config
