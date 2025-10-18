@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@supabase/supabase-js"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,8 +46,12 @@ export default function DashboardCertificationsPage() {
   const [available, setAvailable] = useState<Certification[]>([])
   const [inProgress, setInProgress] = useState<CertificationWithEnrollment[]>([])
   const [completed, setCompleted] = useState<CertificationWithEnrollment[]>([])
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
+    if (hasInitialized.current) return
+    hasInitialized.current = true
+
     const fetchCertifications = async () => {
       try {
         setLoading(true)
@@ -83,6 +87,7 @@ export default function DashboardCertificationsPage() {
         if (certError) {
           console.error("Error fetching certifications:", certError)
           setError("Failed to load certifications")
+          setLoading(false)
           return
         }
 
@@ -95,6 +100,7 @@ export default function DashboardCertificationsPage() {
         if (enrollError) {
           console.error("Error fetching enrollments:", enrollError)
           setError("Failed to load enrollments")
+          setLoading(false)
           return
         }
 
@@ -128,10 +134,10 @@ export default function DashboardCertificationsPage() {
         setAvailable(availableCerts)
         setInProgress(inProgressCerts)
         setCompleted(completedCerts)
+        setLoading(false)
       } catch (err) {
         console.error("Error fetching certifications:", err)
         setError("An error occurred while loading certifications")
-      } finally {
         setLoading(false)
       }
     }
@@ -144,7 +150,7 @@ export default function DashboardCertificationsPage() {
   }
 
   const AvailableCertCard = ({ certification }: { certification: Certification }) => (
-    <Card className="hover:shadow-lg transition-shadow h-full flex flex-col overflow-hidden border-slate-200">
+    <Card className="hover:shadow-lg transition-shadow h-full flex flex-col overflow-hidden border-slate-200 hover:border-blue-300">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start gap-2">
           <div className="flex-1 min-w-0">
@@ -254,7 +260,7 @@ export default function DashboardCertificationsPage() {
         <Skeleton className="h-10 w-64" />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-80 w-full" />
+            <Skeleton key={i} className="h-80 w-full rounded-lg" />
           ))}
         </div>
       </div>
