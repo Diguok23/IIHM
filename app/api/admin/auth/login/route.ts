@@ -1,62 +1,83 @@
 import { createClient } from "@supabase/supabase-js"
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: Request) {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
     // Validate email domain
     if (!email.endsWith("@apmih.college")) {
-      return NextResponse.json({ error: "Only @apmih.college email addresses are allowed" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Only @apmih.college email addresses are allowed for admin login" },
+        { status: 401 },
+      )
     }
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json({ error: "Missing email or password" }, { status: 400 })
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // Create Supabase client
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-    // Authenticate user
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // Sign in with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (signInError || !signInData.user) {
+    if (error) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
     // Get admin user record
-    const { data: adminData, error: adminError } = await supabase
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+    const { data: adminUser, error: adminError } = await supabaseAdmin
       .from("admin_users")
-      .select()
-      .eq("auth_user_id", signInData.user.id)
+      .select("*")
+      .eq("auth_user_id", data.user.id)
       .single()
 
-    if (adminError || !adminData) {
-      return NextResponse.json({ error: "Admin record not found" }, { status: 404 })
+    if (adminError || !adminUser) {
+      return NextResponse.json({ error: "Admin user not found" }, { status: 401 })
     }
 
-    // Check if admin is active
-    if (!adminData.is_active) {
-      return NextResponse.json({ error: "Admin account is inactive" }, { status: 403 })
+    if (!adminUser.is_active) {
+      return NextResponse.json({ error: "Admin account is inactive" }, { status: 401 })
     }
 
     // Update last login
-    await supabase.from("admin_users").update({ last_login: new Date().toISOString() }).eq("id", adminData.id)
+    await supabaseAdmin.from("admin_users").update({ last_login: new Date().toISOString() }).eq("id", adminUser.id)
+
+    // Create activity log
+    await supabaseAdmin.from("admin_activity_logs").insert([
+      {
+        admin_id: adminUser.id,
+        action: "LOGIN",
+        ip_address: request.headers.get("x-forwarded-for") || "unknown",
+        user_agent: request.headers.get("user-agent"),
+      },
+    ])
 
     return NextResponse.json(
       {
-        success: true,
-        token: signInData.session?.access_token,
-        admin: adminData,
+        message: "Login successful",
+        admin: {
+          id: adminUser.id,
+          email: adminUser.email,
+          fullName: adminUser.full_name,
+          role: adminUser.role,
+        },
+        session: data.session,
       },
       { status: 200 },
     )
   } catch (error) {
     console.error("Admin login error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "An error occurred during login" }, { status: 500 })
   }
 }
