@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from 'next/navigation'
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import PesapalPaymentForm from "@/components/pesapal-payment-form"
+import IntasendPaymentForm from "@/components/intasend-payment-form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function PaymentPage() {
@@ -30,7 +31,6 @@ export default function PaymentPage() {
       return
     }
 
-    // Fetch data based on what's provided
     let isMounted = true
     const fetchData = async () => {
       try {
@@ -144,7 +144,7 @@ export default function PaymentPage() {
           </div>
 
           {paymentData && (
-            <PesapalPaymentForm
+            <IntasendPaymentForm
               applicationId={applicationData?.id}
               certificationId={certificationData?.id}
               programName={programName}
