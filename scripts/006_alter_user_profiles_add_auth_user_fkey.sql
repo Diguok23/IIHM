@@ -1,3 +1,0 @@
--- This migration is not needed as user_profiles uses user_id to reference auth.users
--- The id column in user_profiles is an auto-incrementing integer, not a UUID
--- Skip this migration

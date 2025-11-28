@@ -1,32 +1,36 @@
 import { createClient } from "@supabase/supabase-js"
-import type { Database } from "./database.types"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Missing Supabase environment variables")
-}
+// Create a singleton instance for the browser
+let supabaseInstance = null
 
+// Create a Supabase client for browser-side usage
 export const createSupabaseClient = () => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing Supabase environment variables")
+  if (typeof window !== "undefined") {
+    if (!supabaseInstance) {
+      supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          storageKey: "apmih_auth_token",
+        },
+      })
+    }
+    return supabaseInstance
   }
 
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  // For server-side usage, always create a new client
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+      storageKey: "apmih_auth_token",
     },
   })
 }
 
-// For server-side usage
+// Create a Supabase client with service role for server-side operations
 export const createServerSupabaseClient = () => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing Supabase environment variables")
-  }
-
-  return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
 }

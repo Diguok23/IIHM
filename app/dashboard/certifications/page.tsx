@@ -1,271 +1,494 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Loader2, Search, Star, Users } from "lucide-react"
-import { EnrollmentConfirmationDialog } from "@/components/enrollment-confirmation-dialog"
+import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Award, BookOpen, Clock, CheckCircle, AlertCircle, Download, Eye, Play, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 interface Certification {
   id: string
   title: string
   description: string
-  level: string
   category: string
-  duration: string | null
+  level: string
   price: number
-  rating: number | null
-  students: number | null
-  instructor: string | null
+  duration: string
 }
 
-export default function CertificationsPage() {
-  const supabase = createClientComponentClient()
-  const [certifications, setCertifications] = useState<Certification[]>([])
-  const [filteredCertifications, setFilteredCertifications] = useState<Certification[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedLevel, setSelectedLevel] = useState("all")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [confirmationOpen, setConfirmationOpen] = useState(false)
-  const [selectedCertification, setSelectedCertification] = useState<Certification | null>(null)
-  const [enrolledCertifications, setEnrolledCertifications] = useState<string[]>([])
+interface UserEnrollment {
+  id: string
+  certification_id: string
+  status: "pending" | "active" | "completed" | "suspended"
+  progress: number
+  enrolled_at: string
+  started_at?: string
+  completed_at?: string
+  certification: Certification
+}
+
+interface Application {
+  id: string
+  certification_id: string
+  status: "pending" | "approved" | "rejected"
+  created_at: string
+  program_name: string
+}
+
+export default function DashboardCertificationsPage() {
+  const [enrollments, setEnrollments] = useState<UserEnrollment[]>([])
+  const [applications, setApplications] = useState<Application[]>([])
+  const [availableCertifications, setAvailableCertifications] = useState<Certification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("enrolled")
+  const { toast } = useToast()
 
   useEffect(() => {
-    const loadCertifications = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/certifications")
-        const data = await response.json()
-        setCertifications(data.certifications || [])
-        setFilteredCertifications(data.certifications || [])
+        const supabase = createSupabaseClient()
 
-        // Get current user's enrollments
+        // Get current user
         const {
           data: { user },
         } = await supabase.auth.getUser()
 
-        if (user) {
-          const enrollmentsResponse = await fetch(`/api/user-enrollments?user_id=${user.id}`)
-          const enrollmentsData = await enrollmentsResponse.json()
-          const enrolledIds = enrollmentsData.enrollments?.map((e: any) => e.certification_id) || []
-          setEnrolledCertifications(enrolledIds)
+        if (!user) return
+
+        // Fetch user enrollments
+        const { data: enrollmentsData, error: enrollmentsError } = await supabase
+          .from("user_enrollments")
+          .select(`
+            id,
+            certification_id,
+            status,
+            progress,
+            enrolled_at,
+            started_at,
+            completed_at,
+            certifications:certification_id (
+              id,
+              title,
+              description,
+              category,
+              level,
+              price,
+              duration
+            )
+          `)
+          .eq("user_id", user.id)
+          .order("enrolled_at", { ascending: false })
+
+        if (enrollmentsError) {
+          console.error("Error fetching enrollments:", enrollmentsError)
+        } else {
+          setEnrollments(enrollmentsData || [])
+        }
+
+        // Fetch user applications
+        const { data: applicationsData, error: applicationsError } = await supabase
+          .from("applications")
+          .select("id, certification_id, status, created_at, program_name")
+          .eq("email", user.email)
+          .order("created_at", { ascending: false })
+
+        if (applicationsError) {
+          console.error("Error fetching applications:", applicationsError)
+        } else {
+          setApplications(applicationsData || [])
+        }
+
+        // Fetch all available certifications
+        const { data: certificationsData, error: certificationsError } = await supabase
+          .from("certifications")
+          .select("*")
+          .order("category")
+          .order("title")
+
+        if (certificationsError) {
+          console.error("Error fetching certifications:", certificationsError)
+        } else {
+          setAvailableCertifications(certificationsData || [])
         }
       } catch (error) {
-        console.error("Error loading certifications:", error)
+        console.error("Error fetching data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load certifications data",
+          variant: "destructive",
+        })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
-    loadCertifications()
-  }, [supabase])
+    fetchData()
+  }, [toast])
 
-  useEffect(() => {
-    let filtered = certifications
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (cert) =>
-          cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cert.category.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="h-4 w-4 text-yellow-500" />
+      case "active":
+        return <Play className="h-4 w-4 text-blue-500" />
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "suspended":
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <BookOpen className="h-4 w-4 text-gray-500" />
     }
-
-    // Filter by level
-    if (selectedLevel !== "all") {
-      filtered = filtered.filter((cert) => cert.level === selectedLevel)
-    }
-
-    // Filter by category
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((cert) => cert.category === selectedCategory)
-    }
-
-    setFilteredCertifications(filtered)
-  }, [searchTerm, selectedLevel, selectedCategory, certifications])
-
-  const categories = Array.from(new Set(certifications.map((c) => c.category)))
-  const levels = Array.from(new Set(certifications.map((c) => c.level)))
-
-  const handleEnrollClick = (certification: Certification) => {
-    setSelectedCertification(certification)
-    setConfirmationOpen(true)
   }
 
-  if (loading) {
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: "outline",
+      active: "default",
+      completed: "secondary",
+      suspended: "destructive",
+      approved: "default",
+      rejected: "destructive",
+    }
+
+    const colors: Record<string, string> = {
+      pending: "text-yellow-700 bg-yellow-50 border-yellow-200",
+      active: "text-blue-700 bg-blue-50 border-blue-200",
+      completed: "text-green-700 bg-green-50 border-green-200",
+      suspended: "text-red-700 bg-red-50 border-red-200",
+      approved: "text-green-700 bg-green-50 border-green-200",
+      rejected: "text-red-700 bg-red-50 border-red-200",
+    }
+
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <Badge variant={variants[status] || "outline"} className={`text-xs ${colors[status] || ""}`}>
+        {status.toUpperCase()}
+      </Badge>
+    )
+  }
+
+  const handleStartCourse = async (certificationId: string) => {
+    try {
+      const response = await fetch("/api/enroll", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ certificationId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start course")
+      }
+
+      toast({
+        title: "Success!",
+        description: "Course started successfully",
+      })
+
+      // Refresh the page data
+      window.location.reload()
+    } catch (error) {
+      console.error("Error starting course:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start course",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getApprovedApplications = () => {
+    return applications.filter((app) => app.status === "approved")
+  }
+
+  const getUnenrolledApprovedCertifications = () => {
+    const approvedApps = getApprovedApplications()
+    const enrolledIds = enrollments.map((e) => e.certification_id)
+
+    return approvedApps.filter((app) => !enrolledIds.includes(app.certification_id))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-sm text-gray-600">Loading your certifications...</span>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Certifications</h1>
-        <p className="text-muted-foreground">Browse and enroll in our professional certification programs</p>
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">My Certifications</h1>
+        <p className="text-muted-foreground">Manage your enrolled courses and track your progress</p>
       </div>
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search certifications..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="enrolled">Enrolled ({enrollments.length})</TabsTrigger>
+          <TabsTrigger value="available">Available ({getUnenrolledApprovedCertifications().length})</TabsTrigger>
+          <TabsTrigger value="applications">Applications ({applications.length})</TabsTrigger>
+          <TabsTrigger value="completed">
+            Completed ({enrollments.filter((e) => e.status === "completed").length})
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="flex flex-wrap gap-2">
-          {/* Level Filter */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={selectedLevel === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedLevel("all")}
-            >
-              All Levels
-            </Button>
-            {levels.map((level) => (
-              <Button
-                key={level}
-                variant={selectedLevel === level ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedLevel(level)}
-              >
-                {level}
-              </Button>
-            ))}
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory("all")}
-            >
-              All Categories
-            </Button>
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Results Count */}
-      <p className="text-sm text-muted-foreground">
-        Showing {filteredCertifications.length} of {certifications.length} certifications
-      </p>
-
-      {/* Certifications Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCertifications.map((certification) => {
-          const isEnrolled = enrolledCertifications.includes(certification.id)
-
-          return (
-            <Card key={certification.id} className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="space-y-2">
-                  <CardTitle className="line-clamp-2">{certification.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{certification.description}</CardDescription>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex-1 space-y-4">
-                {/* Badges */}
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">{certification.level}</Badge>
-                  <Badge variant="outline">{certification.category}</Badge>
-                </div>
-
-                {/* Info */}
-                <div className="space-y-2 text-sm">
-                  {certification.instructor && (
-                    <p className="text-muted-foreground">
-                      <strong>Instructor:</strong> {certification.instructor}
-                    </p>
-                  )}
-                  {certification.duration && (
-                    <p className="text-muted-foreground">
-                      <strong>Duration:</strong> {certification.duration}
-                    </p>
-                  )}
-                </div>
-
-                {/* Rating and Students */}
-                {(certification.rating || certification.students) && (
-                  <div className="flex gap-4 text-sm">
-                    {certification.rating && (
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span>{certification.rating}</span>
+        {/* Enrolled Courses */}
+        <TabsContent value="enrolled" className="space-y-4">
+          {enrollments.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {enrollments
+                .filter((enrollment) => enrollment.status !== "completed")
+                .map((enrollment) => (
+                  <Card key={enrollment.id} className="flex flex-col">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">{enrollment.certification.category}</Badge>
+                        {getStatusIcon(enrollment.status)}
                       </div>
-                    )}
-                    {certification.students && (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{certification.students} students</span>
+                      <CardTitle className="text-lg">{enrollment.certification.title}</CardTitle>
+                      <CardDescription>{enrollment.certification.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <span>Level: {enrollment.certification.level}</span>
+                          <span>Duration: {enrollment.certification.duration}</span>
+                        </div>
+                        {enrollment.status === "active" && (
+                          <div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span>Progress</span>
+                              <span>{enrollment.progress}%</span>
+                            </div>
+                            <Progress value={enrollment.progress} className="h-2" />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Enrolled: {new Date(enrollment.enrolled_at).toLocaleDateString()}
+                          </span>
+                          {getStatusBadge(enrollment.status)}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Price */}
-                <div className="pt-2 border-t">
-                  <div className="text-2xl font-bold">KES {certification.price.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">+ 16% DST tax</p>
-                </div>
-              </CardContent>
-
-              <div className="p-4 border-t bg-muted/50">
-                <Button
-                  className="w-full"
-                  onClick={() => handleEnrollClick(certification)}
-                  disabled={isEnrolled}
-                  variant={isEnrolled ? "secondary" : "default"}
-                >
-                  {isEnrolled ? "Already Enrolled" : "Enroll Now"}
+                    </CardContent>
+                    <CardFooter className="flex gap-2">
+                      {enrollment.status === "active" ? (
+                        <Button asChild className="flex-1">
+                          <Link href={`/dashboard/courses/${enrollment.certification_id}`}>
+                            <Play className="mr-2 h-4 w-4" />
+                            Continue
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" className="flex-1 bg-transparent" disabled>
+                          <Clock className="mr-2 h-4 w-4" />
+                          {enrollment.status === "pending" ? "Pending Approval" : "Suspended"}
+                        </Button>
+                      )}
+                      <Button variant="outline" size="icon" asChild>
+                        <Link href={`/certifications/${enrollment.certification.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No enrolled courses</h3>
+              <p className="mt-1 text-sm text-gray-500">Apply for certifications to start your learning journey.</p>
+              <div className="mt-6">
+                <Button asChild>
+                  <Link href="/certifications">Browse Certifications</Link>
                 </Button>
               </div>
-            </Card>
-          )
-        })}
-      </div>
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Empty State */}
-      {filteredCertifications.length === 0 && (
-        <Card className="py-12">
-          <div className="text-center text-muted-foreground">
-            <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No certifications found matching your criteria</p>
-          </div>
-        </Card>
-      )}
+        {/* Available Courses (Approved Applications) */}
+        <TabsContent value="available" className="space-y-4">
+          {getUnenrolledApprovedCertifications().length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {getUnenrolledApprovedCertifications().map((application) => {
+                const certification = availableCertifications.find((c) => c.id === application.certification_id)
+                if (!certification) return null
 
-      {/* Enrollment Confirmation Dialog */}
-      <EnrollmentConfirmationDialog
-        open={confirmationOpen}
-        onOpenChange={setConfirmationOpen}
-        certification={selectedCertification}
-      />
+                return (
+                  <Card key={application.id} className="flex flex-col border-green-200">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">{certification.category}</Badge>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      </div>
+                      <CardTitle className="text-lg">{certification.title}</CardTitle>
+                      <CardDescription>{certification.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <span>Level: {certification.level}</span>
+                          <span>Duration: {certification.duration}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Approved: {new Date(application.created_at).toLocaleDateString()}
+                          </span>
+                          {getStatusBadge("approved")}
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex gap-2">
+                      <Button className="flex-1" onClick={() => handleStartCourse(certification.id)}>
+                        <Play className="mr-2 h-4 w-4" />
+                        Start Course
+                      </Button>
+                      <Button variant="outline" size="icon" asChild>
+                        <Link href={`/certifications/${certification.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Award className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No approved applications</h3>
+              <p className="mt-1 text-sm text-gray-500">Submit applications for certifications to unlock courses.</p>
+              <div className="mt-6">
+                <Button asChild>
+                  <Link href="/apply">Submit Application</Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Applications */}
+        <TabsContent value="applications" className="space-y-4">
+          {applications.length > 0 ? (
+            <div className="space-y-4">
+              {applications.map((application) => (
+                <Card key={application.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{application.program_name}</CardTitle>
+                      {getStatusBadge(application.status)}
+                    </div>
+                    <CardDescription>
+                      Applied on {new Date(application.created_at).toLocaleDateString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(application.status)}
+                      <span className="text-sm">
+                        {application.status === "pending" && "Your application is being reviewed"}
+                        {application.status === "approved" && "Application approved! You can now start the course"}
+                        {application.status === "rejected" && "Application was not approved"}
+                      </span>
+                    </div>
+                  </CardContent>
+                  {application.status === "approved" && (
+                    <CardFooter>
+                      <Button onClick={() => handleStartCourse(application.certification_id)}>
+                        <Play className="mr-2 h-4 w-4" />
+                        Start Course
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No applications submitted</h3>
+              <p className="mt-1 text-sm text-gray-500">Submit your first application to get started.</p>
+              <div className="mt-6">
+                <Button asChild>
+                  <Link href="/apply">Submit Application</Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Completed Courses */}
+        <TabsContent value="completed" className="space-y-4">
+          {enrollments.filter((e) => e.status === "completed").length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {enrollments
+                .filter((enrollment) => enrollment.status === "completed")
+                .map((enrollment) => (
+                  <Card key={enrollment.id} className="flex flex-col border-green-200">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">{enrollment.certification.category}</Badge>
+                        <Award className="h-4 w-4 text-green-500" />
+                      </div>
+                      <CardTitle className="text-lg">{enrollment.certification.title}</CardTitle>
+                      <CardDescription>{enrollment.certification.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <span>Level: {enrollment.certification.level}</span>
+                          <span>Duration: {enrollment.certification.duration}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Completed:{" "}
+                            {enrollment.completed_at ? new Date(enrollment.completed_at).toLocaleDateString() : "N/A"}
+                          </span>
+                          {getStatusBadge("completed")}
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex gap-2">
+                      <Button variant="outline" className="flex-1 bg-transparent">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Certificate
+                      </Button>
+                      <Button variant="outline" size="icon" asChild>
+                        <Link href={`/certifications/${enrollment.certification.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Award className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No completed certifications</h3>
+              <p className="mt-1 text-sm text-gray-500">Complete your enrolled courses to earn certificates.</p>
+              <div className="mt-6">
+                <Button asChild>
+                  <Link href="/dashboard/courses">View My Courses</Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

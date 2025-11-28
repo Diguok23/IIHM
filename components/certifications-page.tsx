@@ -1,412 +1,409 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Award,
+  Anchor,
+  Users,
+  Briefcase,
+  LineChart,
+  GraduationCap,
+  UserCheck,
+  Search,
+  Code,
+  Heart,
+  Building,
+  Loader2,
+} from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Clock, Users, Award, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
+import { createSupabaseClient } from "@/lib/supabase"
 import Link from "next/link"
-
-interface Certification {
-  id: string
-  title: string
-  description: string
-  category: string
-  level: "Beginner" | "Intermediate" | "Advanced"
-  duration: string
-  price: number
-  currency: string
-  rating?: number
-  students?: number
-  features?: string[]
-  slug?: string
-}
-
-// Mock data
-const mockCertifications: Certification[] = [
-  {
-    id: "1",
-    title: "Hotel Operations Management",
-    description:
-      "Comprehensive training in hotel operations, front office management, and guest services. Learn industry best practices and develop leadership skills.",
-    category: "Hotel Management",
-    level: "Intermediate",
-    duration: "8 weeks",
-    price: 299,
-    currency: "USD",
-    rating: 4.8,
-    students: 1250,
-    features: ["Live Sessions", "Case Studies", "Industry Mentorship", "Certificate"],
-    slug: "hotel-operations-management",
-  },
-  {
-    id: "2",
-    title: "Food Safety and Hygiene",
-    description:
-      "Essential food safety practices and hygiene standards for hospitality professionals. HACCP principles and regulatory compliance.",
-    category: "Food Service",
-    level: "Beginner",
-    duration: "4 weeks",
-    price: 149,
-    currency: "USD",
-    rating: 4.9,
-    students: 2100,
-    features: ["Self-Paced", "Interactive Modules", "Assessment", "Certificate"],
-    slug: "food-safety-hygiene",
-  },
-  {
-    id: "3",
-    title: "Customer Service Excellence",
-    description:
-      "Advanced customer service techniques and relationship management strategies. Handle difficult situations and exceed guest expectations.",
-    category: "Customer Service",
-    level: "Advanced",
-    duration: "6 weeks",
-    price: 249,
-    currency: "USD",
-    rating: 4.7,
-    students: 890,
-    features: ["Role Playing", "Real Scenarios", "Peer Learning", "Certificate"],
-    slug: "customer-service-excellence",
-  },
-  {
-    id: "4",
-    title: "Event Planning and Management",
-    description:
-      "Complete guide to planning and executing successful hospitality events. From corporate meetings to weddings and conferences.",
-    category: "Event Management",
-    level: "Intermediate",
-    duration: "10 weeks",
-    price: 399,
-    currency: "USD",
-    rating: 4.6,
-    students: 650,
-    features: ["Project-Based", "Industry Tools", "Portfolio Building", "Certificate"],
-    slug: "event-planning-management",
-  },
-  {
-    id: "5",
-    title: "Restaurant Management",
-    description:
-      "Operational excellence in restaurant management and staff coordination. Menu planning, cost control, and team leadership.",
-    category: "Restaurant Management",
-    level: "Advanced",
-    duration: "12 weeks",
-    price: 449,
-    currency: "USD",
-    rating: 4.8,
-    students: 780,
-    features: ["Business Simulation", "Financial Planning", "Leadership Training", "Certificate"],
-    slug: "restaurant-management",
-  },
-  {
-    id: "6",
-    title: "Hospitality Marketing",
-    description:
-      "Digital marketing strategies specifically designed for hospitality businesses. Social media, content marketing, and brand building.",
-    category: "Marketing",
-    level: "Intermediate",
-    duration: "6 weeks",
-    price: 199,
-    currency: "USD",
-    rating: 4.5,
-    students: 1100,
-    features: ["Campaign Creation", "Analytics", "Social Media", "Certificate"],
-    slug: "hospitality-marketing",
-  },
-]
+import { useRouter } from "next/navigation"
 
 export default function CertificationsPage() {
-  const [certifications, setCertifications] = useState<Certification[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [selectedLevel, setSelectedLevel] = useState<string>("all")
-  const [selectedPrice, setSelectedPrice] = useState<string>("all")
+  const [priceFilter, setPriceFilter] = useState("all")
+  const [levelFilter, setLevelFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [certifications, setCertifications] = useState([])
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState([])
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
-    const loadCertifications = async () => {
+    const fetchCertifications = async () => {
       try {
-        // Check if we have Supabase configuration
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-          // Use mock data for preview
-          console.log("Using mock data - Supabase not configured")
-          setCertifications(mockCertifications)
-          setLoading(false)
-          return
-        }
+        setIsLoading(true)
+        const supabase = createSupabaseClient()
 
-        // Try to fetch from API
-        const response = await fetch("/api/certifications")
-        if (response.ok) {
-          const data = await response.json()
-          const certs = data.certifications || []
+        // Check if user is authenticated
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        setIsAuthenticated(!!session)
 
-          // If API returns empty array, use mock data
-          if (certs.length === 0) {
-            console.log("API returned empty, using mock data")
-            setCertifications(mockCertifications)
-          } else {
-            setCertifications(certs)
-          }
-        } else {
-          // Fallback to mock data
-          console.log("API failed, using mock data")
-          setCertifications(mockCertifications)
+        // Fetch all certifications
+        const { data, error } = await supabase.from("certifications").select("*").order("category").order("title")
+
+        if (error) throw error
+
+        setCertifications(data || [])
+
+        // If authenticated, fetch enrolled courses
+        if (session) {
+          const { data: enrollments, error: enrollmentsError } = await supabase
+            .from("user_enrollments") // Changed from user_courses to user_enrollments
+            .select("certification_id")
+            .eq("user_id", session.user.id)
+
+          if (enrollmentsError) throw enrollmentsError
+
+          setEnrolledCourseIds(enrollments.map((e) => e.certification_id)) // Changed from course_id to certification_id
         }
       } catch (error) {
-        console.error("Error loading certifications:", error)
-        // Use mock data on error
-        setCertifications(mockCertifications)
+        console.error("Error fetching certifications:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load certifications. Please try again.",
+          variant: "destructive",
+        })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
-    loadCertifications()
-  }, [])
+    fetchCertifications()
+  }, [toast])
 
-  const safeCertifications = Array.isArray(certifications) ? certifications : []
-
-  const filteredCertifications = safeCertifications.filter((cert) => {
-    const matchesSearch =
-      cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cert.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || cert.category === selectedCategory
-    const matchesLevel = selectedLevel === "all" || cert.level === selectedLevel
-
-    let matchesPrice = true
-    if (selectedPrice !== "all") {
-      switch (selectedPrice) {
-        case "free":
-          matchesPrice = cert.price === 0
-          break
-        case "under-200":
-          matchesPrice = cert.price < 200
-          break
-        case "200-400":
-          matchesPrice = cert.price >= 200 && cert.price <= 400
-          break
-        case "over-400":
-          matchesPrice = cert.price > 400
-          break
-      }
+  const handleEnroll = async (certificationId) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to enroll in courses",
+        variant: "default",
+      })
+      router.push("/login")
+      return
     }
 
-    return matchesSearch && matchesCategory && matchesLevel && matchesPrice
-  })
+    try {
+      setIsEnrolling(true)
 
-  const categories = Array.from(new Set(safeCertifications.map((cert) => cert.category)))
-  const levels = ["Beginner", "Intermediate", "Advanced"]
+      const response = await fetch("/api/enroll", {
+        // Corrected API endpoint
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ certificationId }),
+      })
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "Beginner":
-        return "bg-green-100 text-green-800"
-      case "Intermediate":
-        return "bg-yellow-100 text-yellow-800"
-      case "Advanced":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to enroll")
+      }
+
+      // Update enrolled courses list
+      setEnrolledCourseIds((prev) => [...prev, certificationId])
+
+      toast({
+        title: "Success!",
+        description: "You have successfully enrolled in this course",
+        variant: "default",
+      })
+
+      // Redirect to dashboard
+      router.push("/dashboard/certifications") // Redirect to the certifications dashboard
+    } catch (error) {
+      console.error("Error enrolling:", error)
+      toast({
+        title: "Enrollment Failed",
+        description: error.message || "Failed to enroll in course. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsEnrolling(false)
     }
   }
 
-  if (loading) {
+  // Group certifications by category
+  const certificationsByCategory = certifications.reduce((acc, cert) => {
+    if (!acc[cert.category]) {
+      acc[cert.category] = []
+    }
+    acc[cert.category].push(cert)
+    return acc
+  }, {})
+
+  // Get all unique levels
+  const allLevels = Array.from(new Set(certifications.map((cert) => cert.level)))
+
+  // Filter certifications based on search term, price, and level
+  const filterCertifications = (certs) => {
+    return certs.filter((cert) => {
+      const matchesSearch =
+        cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cert.description.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesPrice =
+        priceFilter === "all" ||
+        (priceFilter === "under100" && cert.price < 100) ||
+        (priceFilter === "100to150" && cert.price >= 100 && cert.price <= 150) ||
+        (priceFilter === "over150" && cert.price > 150)
+
+      const matchesLevel = levelFilter === "all" || cert.level === levelFilter
+
+      return matchesSearch && matchesPrice && matchesLevel
+    })
+  }
+
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-16 w-full mb-4" />
-                <Skeleton className="h-8 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading certifications...</span>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">Professional Certifications</h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          Advance your hospitality career with industry-recognized certifications designed by experts
-        </p>
-      </div>
+    <section className="py-8 sm:py-12 bg-gray-50">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Search and Filter Section */}
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search certifications..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-      {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-4 bg-white p-6 rounded-lg shadow-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search certifications..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-full lg:w-48">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-          <SelectTrigger className="w-full lg:w-32">
-            <SelectValue placeholder="Level" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
-            {levels.map((level) => (
-              <SelectItem key={level} value={level}>
-                {level}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedPrice} onValueChange={setSelectedPrice}>
-          <SelectTrigger className="w-full lg:w-32">
-            <SelectValue placeholder="Price" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Prices</SelectItem>
-            <SelectItem value="free">Free</SelectItem>
-            <SelectItem value="under-200">Under $200</SelectItem>
-            <SelectItem value="200-400">$200 - $400</SelectItem>
-            <SelectItem value="over-400">Over $400</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            <Select value={priceFilter} onValueChange={setPriceFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by price" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Prices</SelectItem>
+                <SelectItem value="under100">Under $100</SelectItem>
+                <SelectItem value="100to150">$100 - $150</SelectItem>
+                <SelectItem value="over150">Over $150</SelectItem>
+              </SelectContent>
+            </Select>
 
-      {/* Results */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredCertifications.length} of {safeCertifications.length} certifications
-        </p>
-        {(searchTerm || selectedCategory !== "all" || selectedLevel !== "all" || selectedPrice !== "all") && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSearchTerm("")
-              setSelectedCategory("all")
-              setSelectedLevel("all")
-              setSelectedPrice("all")
-            }}
-          >
-            Clear Filters
-          </Button>
-        )}
-      </div>
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {allLevels.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Certifications Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCertifications.map((cert) => (
-          <Card key={cert.id} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader className="pb-4">
-              <div className="flex items-start justify-between mb-2">
-                <Badge className={getLevelColor(cert.level)}>{cert.level}</Badge>
-                {cert.rating && (
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">{cert.rating}</span>
-                  </div>
-                )}
-              </div>
-              <CardTitle className="text-xl leading-tight">{cert.title}</CardTitle>
-              <CardDescription className="line-clamp-3">{cert.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{cert.duration}</span>
-                </div>
-                {cert.students && (
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <span>{cert.students.toLocaleString()} students</span>
-                  </div>
-                )}
-              </div>
-
-              {cert.features && (
-                <div className="flex flex-wrap gap-1">
-                  {cert.features.slice(0, 3).map((feature, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {feature}
-                    </Badge>
-                  ))}
-                  {cert.features.length > 3 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{cert.features.length - 3} more
-                    </Badge>
-                  )}
-                </div>
+          {/* Active filters */}
+          {(searchTerm || priceFilter !== "all" || levelFilter !== "all") && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {searchTerm && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Search: {searchTerm}
+                  <button onClick={() => setSearchTerm("")} className="ml-1 hover:text-primary">
+                    ×
+                  </button>
+                </Badge>
               )}
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="text-2xl font-bold">
-                  {cert.price === 0 ? "Free" : `$${cert.price}`}
-                  {cert.price > 0 && (
-                    <span className="text-sm font-normal text-muted-foreground"> {cert.currency}</span>
-                  )}
-                </div>
-                <Button asChild>
-                  <Link href={`/certifications/${cert.slug || cert.id}`}>
-                    <Award className="h-4 w-4 mr-2" />
-                    Learn More
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              {priceFilter !== "all" && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Price:{" "}
+                  {priceFilter === "under100" ? "Under $100" : priceFilter === "100to150" ? "$100 - $150" : "Over $150"}
+                  <button onClick={() => setPriceFilter("all")} className="ml-1 hover:text-primary">
+                    ×
+                  </button>
+                </Badge>
+              )}
 
-      {filteredCertifications.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Award className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No certifications found</h3>
-            <p className="text-gray-500 text-center mb-4">
-              Try adjusting your search criteria or browse all available certifications.
-            </p>
-            <Button
-              onClick={() => {
-                setSearchTerm("")
-                setSelectedCategory("all")
-                setSelectedLevel("all")
-                setSelectedPrice("all")
-              }}
-            >
-              Clear All Filters
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+              {levelFilter !== "all" && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Level: {levelFilter}
+                  <button onClick={() => setLevelFilter("all")} className="ml-1 hover:text-primary">
+                    ×
+                  </button>
+                </Badge>
+              )}
+
+              {(searchTerm || priceFilter !== "all" || levelFilter !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setPriceFilter("all")
+                    setLevelFilter("all")
+                  }}
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="flex flex-wrap justify-start mb-6 sm:mb-8 overflow-x-auto">
+            <TabsTrigger value="all" className="text-xs sm:text-sm md:text-base">
+              All
+            </TabsTrigger>
+            {Object.keys(certificationsByCategory).map((category) => (
+              <TabsTrigger key={category} value={category} className="text-xs sm:text-sm md:text-base">
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {/* All Certifications Tab */}
+          <TabsContent value="all">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {certifications.length > 0 ? (
+                filterCertifications(certifications).map((cert) => (
+                  <CertificationCard
+                    key={cert.id}
+                    cert={cert}
+                    isEnrolled={enrolledCourseIds.includes(cert.id)}
+                    onEnroll={() => handleEnroll(cert.id)}
+                    isEnrolling={isEnrolling}
+                    isAuthenticated={isAuthenticated}
+                  />
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-12">
+                  <h3 className="text-xl font-medium mb-2">No certifications found</h3>
+                  <p className="text-gray-500">Please check back later for new offerings</p>
+                </div>
+              )}
+            </div>
+
+            {/* No results message */}
+            {certifications.length > 0 && filterCertifications(certifications).length === 0 && (
+              <div className="text-center py-12">
+                <h3 className="text-xl font-medium mb-2">No certifications found</h3>
+                <p className="text-gray-500">Try adjusting your search or filters</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Individual Category Tabs */}
+          {Object.entries(certificationsByCategory).map(([category, certs]) => (
+            <TabsContent key={category} value={category}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filterCertifications(certs).map((cert) => (
+                  <CertificationCard
+                    key={cert.id}
+                    cert={cert}
+                    isEnrolled={enrolledCourseIds.includes(cert.id)}
+                    onEnroll={() => handleEnroll(cert.id)}
+                    isEnrolling={isEnrolling}
+                    isAuthenticated={isAuthenticated}
+                  />
+                ))}
+              </div>
+
+              {/* No results message */}
+              {filterCertifications(certs).length === 0 && (
+                <div className="text-center py-12">
+                  <h3 className="text-xl font-medium mb-2">No certifications found</h3>
+                  <p className="text-gray-500">Try adjusting your search or filters</p>
+                </div>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    </section>
+  )
+}
+
+function CertificationCard({ cert, isEnrolled, onEnroll, isEnrolling, isAuthenticated }) {
+  // Helper function to get icon based on category
+  const getIcon = (category) => {
+    const icons = {
+      cruise: <Anchor className="h-8 w-8 text-amber-500" />,
+      executive: <Briefcase className="h-8 w-8 text-amber-500" />,
+      business: <LineChart className="h-8 w-8 text-amber-500" />,
+      it: <Code className="h-8 w-8 text-amber-500" />,
+      admin: <Building className="h-8 w-8 text-amber-500" />,
+      social: <Users className="h-8 w-8 text-amber-500" />,
+      healthcare: <Heart className="h-8 w-8 text-amber-500" />,
+      sales: <LineChart className="h-8 w-8 text-amber-500" />,
+      training: <GraduationCap className="h-8 w-8 text-amber-500" />,
+      frontline: <UserCheck className="h-8 w-8 text-amber-500" />,
+    }
+
+    return icons[category] || <Award className="h-8 w-8 text-amber-500" />
+  }
+
+  return (
+    <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
+      <CardHeader>
+        <div className="mb-4">{getIcon(cert.category)}</div>
+        <CardTitle className="text-lg sm:text-xl">{cert.title}</CardTitle>
+        <CardDescription>
+          <Badge variant="outline" className="mb-2">
+            {cert.category.charAt(0).toUpperCase() + cert.category.slice(1)}
+          </Badge>
+          <div className="flex justify-between mt-2">
+            <span>Level: {cert.level}</span>
+          </div>
+          <div className="mt-2 text-lg font-semibold text-amber-600">${cert.price}</div>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        <p className="text-sm sm:text-base">{cert.description}</p>
+      </CardContent>
+      <CardFooter className="flex flex-col sm:flex-row gap-2">
+        <Button className="w-full sm:w-auto" asChild>
+          <Link href={`/certifications/${cert.id}`}>Learn More</Link> {/* Changed from slug to id */}
+        </Button>
+
+        {isEnrolled ? (
+          <Button variant="outline" className="w-full sm:w-auto bg-transparent" asChild>
+            <Link href="/dashboard/certifications">Go to Course</Link> {/* Redirect to certifications dashboard */}
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto bg-transparent"
+            onClick={onEnroll}
+            disabled={isEnrolling}
+          >
+            {isEnrolling ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Enrolling...
+              </>
+            ) : (
+              "Enroll Now"
+            )}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
   )
 }

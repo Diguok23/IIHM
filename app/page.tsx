@@ -1,25 +1,24 @@
-import Header from "@/components/header"
+"use client"
+
 import Hero from "@/components/hero"
+import Certifications from "@/components/certifications"
 import About from "@/components/about"
 import Benefits from "@/components/benefits"
-import Certifications from "@/components/certifications"
 import Testimonials from "@/components/testimonials"
 import Contact from "@/components/contact"
 import Footer from "@/components/footer"
 
-export default function HomePage() {
+export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main>
-        <Hero />
-        <About />
-        <Benefits />
-        <Certifications />
-        <Testimonials />
-        <Contact />
-      </main>
+    <>
+      {/* Header is rendered once in `app/layout.tsx` */}
+      <Hero />
+      <Certifications />
+      <About />
+      <Benefits />
+      <Testimonials />
+      <Contact />
       <Footer />
-    </div>
+    </>
   )
 }

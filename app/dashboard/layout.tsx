@@ -2,171 +2,122 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { DashboardSidebar } from "@/components/dashboard-sidebar"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { Skeleton } from "@/components/ui/skeleton"
-
-interface User {
-  id: string
-  email: string
-  user_metadata?: {
-    full_name?: string
-    first_name?: string
-    last_name?: string
-  }
-}
+import { useRouter, usePathname } from "next/navigation"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Loader2 } from "lucide-react"
+import DashboardHeader from "@/components/dashboard-header"
+import DashboardSidebar from "@/components/dashboard-sidebar"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<User | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const pathname = usePathname()
+  const [user, setUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    const checkAuth = async () => {
+    let mounted = true
+    let authSubscription: any = null
+
+    const initAuth = async () => {
       try {
-        setIsLoading(true)
-        setError(null)
+        const supabase = createSupabaseClient()
 
-        // Check if we have Supabase configuration
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-        if (!supabaseUrl || !supabaseAnonKey) {
-          console.warn("Missing Supabase environment variables")
-          // Use mock user for preview
-          const mockUser: User = {
-            id: "demo-user-123",
-            email: "demo@example.com",
-            user_metadata: {
-              full_name: "Demo User",
-            },
-          }
-          setUser(mockUser)
-          setIsLoading(false)
-          return
-        }
-
-        // Import and use Supabase
-        const { createClient } = await import("@supabase/supabase-js")
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-        // Get the current session
+        // Get initial session
         const {
           data: { session },
-          error: sessionError,
+          error,
         } = await supabase.auth.getSession()
 
-        if (sessionError) {
-          console.error("Auth error:", sessionError)
-          setError("Authentication error")
-          setIsLoading(false)
+        if (!mounted) return
+
+        if (error) {
+          console.error("Session error:", error)
+          if (!isRedirecting) {
+            setIsRedirecting(true)
+            router.replace("/login")
+          }
           return
         }
 
         if (!session?.user) {
-          console.log("No session found, redirecting to login")
-          router.push("/login")
+          if (!isRedirecting) {
+            setIsRedirecting(true)
+            router.replace("/login")
+          }
           return
         }
 
-        const userData: User = {
-          id: session.user.id,
-          email: session.user.email || "",
-          user_metadata: session.user.user_metadata,
-        }
+        setUser(session.user)
+        setIsLoading(false)
 
-        setUser(userData)
-
-        // Listen for auth changes
+        // Set up auth state listener
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-          if (event === "SIGNED_OUT" || !newSession) {
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return
+
+          if (event === "SIGNED_OUT" || !session) {
             setUser(null)
-            router.push("/login")
-          } else if (newSession?.user) {
-            const updatedUser: User = {
-              id: newSession.user.id,
-              email: newSession.user.email || "",
-              user_metadata: newSession.user.user_metadata,
+            if (!isRedirecting) {
+              setIsRedirecting(true)
+              router.replace("/login")
             }
-            setUser(updatedUser)
+          } else if (session?.user) {
+            setUser(session.user)
+            setIsLoading(false)
           }
         })
 
-        return () => subscription?.unsubscribe()
+        authSubscription = subscription
       } catch (error) {
-        console.error("Auth check error:", error)
-        setError("Failed to check authentication")
-      } finally {
-        setIsLoading(false)
+        if (!mounted) return
+        console.error("Auth initialization error:", error)
+        if (!isRedirecting) {
+          setIsRedirecting(true)
+          router.replace("/login")
+        }
       }
     }
 
-    checkAuth()
-  }, [router])
+    initAuth()
 
-  if (isLoading) {
+    return () => {
+      mounted = false
+      if (authSubscription) {
+        authSubscription.unsubscribe()
+      }
+    }
+  }, [router, pathname, isRedirecting])
+
+  // Show loading while checking auth
+  if (isLoading || isRedirecting) {
     return (
-      <div className="flex h-screen">
-        <div className="w-64 border-r bg-gray-50">
-          <div className="p-4 space-y-4">
-            <Skeleton className="h-8 w-32" />
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex-1">
-          <div className="border-b p-4">
-            <Skeleton className="h-8 w-48" />
-          </div>
-          <div className="p-6 space-y-4">
-            <Skeleton className="h-8 w-64" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-sm text-gray-600">{isRedirecting ? "Redirecting..." : "Loading dashboard..."}</span>
         </div>
       </div>
     )
   }
 
-  if (error || !user) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Error</h1>
-          <p className="text-muted-foreground mb-4">{error || "Please log in to access the dashboard"}</p>
-          <button
-            onClick={() => router.push("/login")}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    )
+  // Don't render if no user
+  if (!user) {
+    return null
   }
 
   return (
-    <SidebarProvider>
-      <DashboardSidebar user={user} />
-      <SidebarInset>
-        <DashboardHeader user={user} />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader user={user} />
+      <div className="flex">
+        <DashboardSidebar />
+        <main className="flex-1 p-6">{children}</main>
+      </div>
+    </div>
   )
 }

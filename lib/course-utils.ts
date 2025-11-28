@@ -6,10 +6,10 @@ export async function enrollUserInCourse(userId: string, courseId: string) {
 
     // Check if user is already enrolled
     const { data: existingEnrollment, error: checkError } = await supabase
-      .from("user_enrollments") // Changed from user_courses to user_enrollments
+      .from("user_courses")
       .select("id")
       .eq("user_id", userId)
-      .eq("certification_id", courseId) // Changed from course_id to certification_id
+      .eq("course_id", courseId)
       .single()
 
     if (checkError && checkError.code !== "PGRST116") {
@@ -23,68 +23,57 @@ export async function enrollUserInCourse(userId: string, courseId: string) {
     }
 
     // Get course details to set up modules
-    const { data: certification, error: certError } = await supabase
+    const { data: course, error: courseError } = await supabase
       .from("certifications")
       .select("*")
       .eq("id", courseId)
       .single()
 
-    if (certError) throw certError
-
-    // Calculate due date (e.g., 3 months from now, or based on certification duration if available)
-    const defaultDueDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 3 months
+    if (courseError) throw courseError
 
     // Create enrollment
     const { data: enrollment, error: enrollError } = await supabase
-      .from("user_enrollments") // Changed from user_courses to user_enrollments
+      .from("user_courses")
       .insert({
         user_id: userId,
-        certification_id: courseId, // Changed from course_id to certification_id
+        course_id: courseId,
         progress: 0,
         status: "not_started",
-        enrolled_at: new Date().toISOString(),
-        due_date: defaultDueDate, // Set the due date
-        certificate_issued: false, // Default to not issued
+        // Set completion date to 3 months from now by default
+        completion_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
       })
       .select()
       .single()
 
     if (enrollError) throw enrollError
 
-    // Fetch actual modules for this certification
-    const { data: modules, error: modulesFetchError } = await supabase
-      .from("modules")
-      .select("id")
-      .eq("certification_id", courseId)
-      .order("order_num")
+    // Create default modules based on course category
+    // This is a simplified example - in a real app, you'd have a more sophisticated way to define modules
+    const defaultModules = getDefaultModules(course.category)
 
-    if (modulesFetchError) throw modulesFetchError
+    // Insert modules
+    const moduleInserts = defaultModules.map((module, index) => ({
+      user_id: userId,
+      course_id: courseId,
+      module_title: module,
+      module_order: index + 1,
+      is_completed: false,
+    }))
 
-    // Insert user_modules entries for each module
-    if (modules && modules.length > 0) {
-      const userModuleInserts = modules.map((module) => ({
-        user_id: userId,
-        course_id: courseId, // Keep course_id for now, but ideally should be certification_id
-        module_id: module.id,
-        is_completed: false,
-      }))
+    const { error: modulesError } = await supabase.from("user_modules").insert(moduleInserts)
 
-      const { error: userModulesError } = await supabase.from("user_modules").insert(userModuleInserts)
-
-      if (userModulesError) throw userModulesError
-    }
+    if (modulesError) throw modulesError
 
     return { success: true, message: "Successfully enrolled", id: enrollment.id }
   } catch (error) {
     console.error("Error enrolling in course:", error)
-    return { success: false, message: error instanceof Error ? error.message : "Failed to enroll in course" }
+    return { success: false, message: error.message || "Failed to enroll in course" }
   }
 }
 
 // Helper function to get default modules based on course category
-// This function is now less critical as we fetch from the 'modules' table
-// but keeping it for potential fallback or initial seeding logic.
 function getDefaultModules(category: string): string[] {
+  // This is a simplified example - in a real app, you'd have a more sophisticated way to define modules
   const modulesByCategory = {
     cruise: [
       "Introduction to Cruise Ship Operations",
@@ -110,6 +99,7 @@ function getDefaultModules(category: string): string[] {
       "Cloud Computing",
       "IT Project Management",
     ],
+    // Add more categories as needed
     default: [
       "Module 1: Introduction",
       "Module 2: Core Concepts",
