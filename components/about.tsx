@@ -8,13 +8,13 @@ export default function About() {
           <div>
             <h2 className="text-3xl font-bold text-navy-900 mb-6">About APMIH</h2>
             <p className="text-lg mb-6">
-              The American Professional Management Institute of Hospitality (APMIH) is a premier educational institution
-              dedicated to providing world-class certification programs for hospitality professionals.
+              The International Institute of Hospitality Management (IIHM) is a premier global institution
+              dedicated to excellence in hospitality education and professional development.
             </p>
             <p className="text-lg mb-6">
-              Founded by industry experts with decades of experience, APMIH offers specialized training and
-              certification programs designed to meet the unique demands of the hospitality industry, with a particular
-              focus on cruise ship operations.
+              Our mission is to equip students and professionals with the knowledge, skills, and experience required to thrive in the dynamic hospitality industry.
+              With an international curriculum, experienced faculty, and strategic industry partnerships, IIHM is committed to nurturing leaders, innovators, and service excellence worldwide.
+              At IIHM, we provide world-class training, certifications, and mentorship to shape the next generation of hospitality professionals worldwide.
             </p>
             <div className="space-y-4 mt-8">
               <div className="flex items-start">
