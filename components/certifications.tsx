@@ -155,7 +155,7 @@ export default function CertificationsSection() {
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Professional Certifications</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Advance your career with our comprehensive certification programs designed for hospitality and cruise ship
-            professionals
+            professionals at IIHM. 
           </p>
         </div>
 
