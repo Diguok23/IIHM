@@ -19,19 +19,19 @@ export default function About() {
             <div className="space-y-4 mt-8">
               <div className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-green-600 mr-2 flex-shrink-0 mt-1" />
-                <p>Accredited by leading hospitality industry associations</p>
+                <p>Recognized by top organizations across the global hospitality sector</p>
               </div>
               <div className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-green-600 mr-2 flex-shrink-0 mt-1" />
-                <p>Programs developed in collaboration with major cruise lines</p>
+                <p>Curricula designed alongside industry leaders and international cruise brands</p>
               </div>
               <div className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-green-600 mr-2 flex-shrink-0 mt-1" />
-                <p>Expert instructors with extensive industry experience</p>
+                <p>Learn from seasoned professionals with real-world hospitality expertise</p>
               </div>
               <div className="flex items-start">
                 <CheckCircle className="h-6 w-6 text-green-600 mr-2 flex-shrink-0 mt-1" />
-                <p>Flexible learning options including online and in-person courses</p>
+                <p>Study at your pace with both virtual and on-campus training options</p>
               </div>
             </div>
           </div>
