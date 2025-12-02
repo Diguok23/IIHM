@@ -74,7 +74,7 @@ export default function Header() {
                 <span className="text-navy-900">APMIH</span>
               </span>
               <span className="ml-2 hidden text-sm text-muted-foreground md:inline-block">
-                American Professional Management Institute of Hospitality
+                The International Institute of Hospitality Management (IIHM)
               </span>
             </Link>
           </div>
