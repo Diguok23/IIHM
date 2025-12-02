@@ -5,28 +5,28 @@ import { Star } from "lucide-react"
 export default function Testimonials() {
   const testimonials = [
     {
-      name: "Michael Johnson",
-      role: "Food & Beverage Manager, Royal Caribbean",
-      image: "/images/student-pair.jpeg",
-      content:
-        "The Food Safety & Sanitation certification from APMIH was instrumental in securing my position with Royal Caribbean. The curriculum was comprehensive and directly applicable to my daily responsibilities.",
-      initials: "MJ",
+  name: "Leonardo Martinez",
+  role: "Hotel Operations Supervisor, Hilton Doha",
+  image: "/images/student-pair.jpeg",
+  content:
+    "IIHM’s Hospitality Operations Certification reshaped my understanding of service management. The training boosted my confidence and played a key role in securing my position with Hilton.",
+  initials: "LM",
     },
     {
-      name: "Sarah Williams",
-      role: "Guest Services Director, Norwegian Cruise Line",
-      image: "/images/student-woman.jpeg",
-      content:
-        "After completing the Guest Services Excellence program, I was promoted within three months. The practical training and industry insights provided by APMIH are unmatched in the industry.",
-      initials: "SW",
+  name: "Amina Yusuf",
+  role: "Front Office Coordinator, Emirates Palace Abu Dhabi",
+  image: "/images/student-woman.jpeg",
+  content:
+    "The Front Office Excellence Program at IIHM was a turning point in my career. The instructors brought real-life scenarios that prepared me for high-end luxury service environments.",
+  initials: "AY",
     },
     {
-      name: "David Chen",
-      role: "Hospitality Manager, Carnival Cruise Line",
-      image: "/images/student-man.jpeg",
-      content:
-        "The Cruise Ship Hospitality Management certification gave me the competitive edge I needed. The instructors' real-world experience and connections helped me land my dream job.",
-      initials: "DC",
+  name: "Ethan Brooks",
+  role: "Resort Guest Experience Manager, Sandals Jamaica",
+  image: "/images/student-man.jpeg",
+  content:
+    "IIHM’s Advanced Guest Experience Certification gave me the skills to elevate guest satisfaction scores at my resort. The coursework was detailed, modern, and industry-focused.",
+  initials: "EB",
     },
   ]
 
@@ -36,8 +36,7 @@ export default function Testimonials() {
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold">Success Stories</h2>
           <p className="mt-4 text-lg max-w-3xl mx-auto text-gray-300">
-            Hear from our graduates who have successfully advanced their careers in the cruise ship hospitality
-            industry.
+          Discover inspiring stories from IIHM graduates who’ve elevated their careers in global cruise hospitality.
           </p>
         </div>
 
