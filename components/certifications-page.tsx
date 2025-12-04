@@ -42,6 +42,12 @@ export function CertificationsPage() {
     const fetchCertifications = async () => {
       try {
         setIsLoading(true)
+
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          console.error("[v0] Missing Supabase environment variables")
+          throw new Error("Supabase configuration is missing")
+        }
+
         const supabase = createSupabaseClient()
 
         // Check if user is authenticated
@@ -60,16 +66,16 @@ export function CertificationsPage() {
         // If authenticated, fetch enrolled courses
         if (session) {
           const { data: enrollments, error: enrollmentsError } = await supabase
-            .from("user_enrollments") // Changed from user_courses to user_enrollments
+            .from("user_enrollments")
             .select("certification_id")
             .eq("user_id", session.user.id)
 
           if (enrollmentsError) throw enrollmentsError
 
-          setEnrolledCourseIds(enrollments.map((e) => e.certification_id)) // Changed from course_id to certification_id
+          setEnrolledCourseIds(enrollments.map((e) => e.certification_id))
         }
       } catch (error) {
-        console.error("Error fetching certifications:", error)
+        console.error("[v0] Error fetching certifications:", error)
         toast({
           title: "Error",
           description: "Failed to load certifications. Please try again.",
@@ -98,7 +104,6 @@ export function CertificationsPage() {
       setIsEnrolling(true)
 
       const response = await fetch("/api/enroll", {
-        // Corrected API endpoint
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +127,7 @@ export function CertificationsPage() {
       })
 
       // Redirect to dashboard
-      router.push("/dashboard/certifications") // Redirect to the certifications dashboard
+      router.push("/dashboard/certifications")
     } catch (error) {
       console.error("Error enrolling:", error)
       toast({
@@ -378,12 +383,12 @@ function CertificationCard({ cert, isEnrolled, onEnroll, isEnrolling, isAuthenti
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row gap-2">
         <Button className="w-full sm:w-auto" asChild>
-          <Link href={`/certifications/${cert.id}`}>Learn More</Link> {/* Changed from slug to id */}
+          <Link href={`/certifications/${cert.id}`}>Learn More</Link>
         </Button>
 
         {isEnrolled ? (
           <Button variant="outline" className="w-full sm:w-auto bg-transparent" asChild>
-            <Link href="/dashboard/certifications">Go to Course</Link> {/* Redirect to certifications dashboard */}
+            <Link href="/dashboard/certifications">Go to Course</Link>
           </Button>
         ) : (
           <Button
