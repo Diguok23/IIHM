@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createSupabaseClient } from "@/lib/supabase"
 import { BookOpen, Clock, ArrowRight, Search, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,29 +27,31 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true)
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
+        const supabase = createSupabaseClient()
 
-        if (!session) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
           router.push("/login")
           return
         }
 
         const { data, error } = await supabase
-          .from("user_courses")
+          .from("user_enrollments")
           .select(`
-            course_id,
+            id,
+            certification_id,
             progress,
             status,
-            last_accessed,
-            certifications:course_id(
+            created_at,
+            certifications:certification_id(
               id,
               title,
               description,
@@ -57,20 +59,20 @@ export default function CoursesPage() {
               level
             )
           `)
-          .eq("user_id", session.user.id)
-          .order("last_accessed", { ascending: false })
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
 
         if (error) throw error
 
-        const formattedCourses = data.map((item) => ({
-          id: item.course_id,
+        const formattedCourses = data.map((item: any) => ({
+          id: item.certification_id,
           title: item.certifications.title,
           description: item.certifications.description,
           category: item.certifications.category,
           level: item.certifications.level,
           progress: item.progress,
           status: item.status,
-          last_accessed: item.last_accessed,
+          last_accessed: item.created_at,
         }))
 
         setCourses(formattedCourses)
@@ -87,7 +89,7 @@ export default function CoursesPage() {
     }
 
     fetchCourses()
-  }, [router, supabase])
+  }, [router])
 
   const filteredCourses = courses.filter(
     (course) =>
@@ -212,7 +214,7 @@ export default function CoursesPage() {
               <p className="text-gray-500 max-w-md mx-auto">
                 We couldn't find any courses matching "{searchQuery}". Try a different search term.
               </p>
-              <Button variant="outline" className="mt-4" onClick={() => setSearchQuery("")}>
+              <Button variant="outline" className="mt-4 bg-transparent" onClick={() => setSearchQuery("")}>
                 Clear Search
               </Button>
             </>

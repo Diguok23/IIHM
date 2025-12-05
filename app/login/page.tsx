@@ -155,6 +155,7 @@ export default function LoginPage() {
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo: "https://iihminstitute.com/dashboard",
           data: {
             full_name: name.trim(),
           },
