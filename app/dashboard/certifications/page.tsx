@@ -354,7 +354,7 @@ export default function DashboardCertificationsPage() {
                     <CardFooter className="flex gap-2">
                       <Button className="flex-1" onClick={() => handleStartCourse(certification.id)}>
                         <Play className="mr-2 h-4 w-4" />
-                        Start Course
+                        Enroll Now
                       </Button>
                       <Button variant="outline" size="icon" asChild>
                         <Link href={`/certifications/${certification.id}`}>

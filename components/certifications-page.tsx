@@ -92,11 +92,11 @@ export function CertificationsPage() {
   const handleEnroll = async (certificationId) => {
     if (!isAuthenticated) {
       toast({
-        title: "Authentication Required",
-        description: "Please log in to enroll in courses",
+        title: "Application Required",
+        description: "Please apply for this certification first",
         variant: "default",
       })
-      router.push("/login")
+      router.push(`/apply?certification=${certificationId}`)
       return
     }
 

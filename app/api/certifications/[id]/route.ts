@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const { data: certification, error } = await supabase
       .from("certifications")
       .select("*")
-      .eq("id", params.id)
+      .eq("slug", params.id)
       .single()
 
     if (error) {
