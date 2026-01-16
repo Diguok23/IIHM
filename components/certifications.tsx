@@ -155,7 +155,7 @@ export default function CertificationsSection() {
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Professional Certifications</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Advance your career with our comprehensive certification programs designed for hospitality and cruise ship
-            professionals at IIHM. 
+            professionals at IIHM.
           </p>
         </div>
 
@@ -203,12 +203,10 @@ export default function CertificationsSection() {
                       </CardDescription>
                       <div className="flex gap-2">
                         <Button asChild className="flex-1">
-                          <Link href={`/apply?program=${encodeURIComponent(cert.title)}&category=${cert.category}`}>
-                            Apply Now
-                          </Link>
+                          <Link href="/apply">Apply Now</Link>
                         </Button>
                         <Button variant="outline" asChild>
-                          <Link href={`/certifications/${cert.slug}`}>Learn More</Link>
+                          <Link href="/apply">Learn More</Link>
                         </Button>
                       </div>
                     </CardContent>

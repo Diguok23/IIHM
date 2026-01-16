@@ -90,54 +90,8 @@ export function CertificationsPage() {
   }, [toast])
 
   const handleEnroll = async (certificationId) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Application Required",
-        description: "Please apply for this certification first",
-        variant: "default",
-      })
-      router.push(`/apply?certification=${certificationId}`)
-      return
-    }
-
-    try {
-      setIsEnrolling(true)
-
-      const response = await fetch("/api/enroll", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ certificationId }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to enroll")
-      }
-
-      // Update enrolled courses list
-      setEnrolledCourseIds((prev) => [...prev, certificationId])
-
-      toast({
-        title: "Success!",
-        description: "You have successfully enrolled in this course",
-        variant: "default",
-      })
-
-      // Redirect to applications page instead of certifications
-      router.push("/dashboard/applications")
-    } catch (error) {
-      console.error("Error enrolling:", error)
-      toast({
-        title: "Enrollment Failed",
-        description: error.message || "Failed to enroll in course. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsEnrolling(false)
-    }
+    router.push("/apply")
+    return
   }
 
   // Group certifications by category

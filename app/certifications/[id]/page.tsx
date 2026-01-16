@@ -68,6 +68,12 @@ export default function CertificationDetailPage() {
     )
   }
 
+  useEffect(() => {
+    if (!params.id) {
+      router.push("/apply")
+    }
+  }, [params.id, router])
+
   if (isLoading) {
     return (
       <>
