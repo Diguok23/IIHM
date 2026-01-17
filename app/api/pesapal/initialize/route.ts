@@ -7,14 +7,14 @@ export async function POST(request: NextRequest) {
     const {
       email,
       amount,
-      currency = "KES",
+      currency = "USD", // Changed default currency from "KES" to "USD"
       applicationId,
       certificationId,
       programName,
       firstName,
       lastName,
       phoneNumber,
-      countryCode = "KE",
+      countryCode = "US", // Changed default country code from "KE" to "US"
     } = body
 
     if (!email || !amount) {

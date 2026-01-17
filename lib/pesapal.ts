@@ -206,7 +206,7 @@ export async function savePesapalPaymentToDatabase(paymentData: any) {
       reference: paymentData.merchant_reference,
       order_tracking_id: paymentData.order_tracking_id,
       amount: paymentData.amount,
-      currency: paymentData.currency || "KES",
+      currency: paymentData.currency || "USD",
       email: paymentData.email,
       status: paymentData.status || "pending",
       payment_method: paymentData.payment_method,

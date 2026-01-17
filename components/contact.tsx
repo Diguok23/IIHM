@@ -105,9 +105,9 @@ export default function Contact() {
                     <div>
                       <h3 className="font-medium">Phone</h3>
                       <p className="text-gray-600 text-sm sm:text-base">
-                        Contact: +1 (579) 396-6751
+                        Toll-Free: +122345678234567
                         <br />
-                        International: +1 (579) 396-6751
+                        International: +1 (305) 23456789
                       </p>
                     </div>
                   </div>
@@ -117,7 +117,7 @@ export default function Contact() {
                     <div>
                       <h3 className="font-medium">Email</h3>
                       <p className="text-gray-600 text-sm sm:text-base">
-                        Admissions: admission@iihminstitute.com
+                        Admissions: applications@iihminstitute.com
                         <br />
                         General Inquiries: info@iihminstitute.com
                       </p>

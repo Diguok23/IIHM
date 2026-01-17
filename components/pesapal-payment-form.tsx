@@ -34,7 +34,7 @@ export default function PesapalPaymentForm({
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [currency, setCurrency] = useState("KES")
+  const [currency, setCurrency] = useState("USD")
   const [customAmount, setCustomAmount] = useState(amount.toString())
   const [phoneNumber, setPhoneNumber] = useState("")
   const [amountError, setAmountError] = useState("")
@@ -84,7 +84,7 @@ export default function PesapalPaymentForm({
           firstName,
           lastName,
           phoneNumber,
-          countryCode: currency === "KES" ? "KE" : "UG", // Default country codes
+          countryCode: "US",
         }),
       })
 
@@ -109,16 +109,7 @@ export default function PesapalPaymentForm({
   }
 
   const getCurrencySymbol = (curr: string) => {
-    switch (curr) {
-      case "KES":
-        return "KSh"
-      case "UGX":
-        return "UGX"
-      case "USD":
-        return "$"
-      default:
-        return curr
-    }
+    return "$"
   }
 
   return (
@@ -177,8 +168,6 @@ export default function PesapalPaymentForm({
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="KES">KES (Kenyan Shillings)</SelectItem>
-              <SelectItem value="UGX">UGX (Ugandan Shillings)</SelectItem>
               <SelectItem value="USD">USD (US Dollars)</SelectItem>
             </SelectContent>
           </Select>
@@ -206,7 +195,8 @@ export default function PesapalPaymentForm({
             <span>Secure payment powered by Pesapal</span>
           </div>
           <p className="text-xs text-gray-500">
-            Your payment details are handled with the highest level of security. IIHM accepts Mobile Money, bank transfers, and major card payments for your convenience.
+            Your payment details are handled with the highest level of security. IIHM accepts Mobile Money, bank
+            transfers, and major card payments for your convenience.
           </p>
         </div>
       </CardContent>

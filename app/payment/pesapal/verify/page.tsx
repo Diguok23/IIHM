@@ -71,9 +71,8 @@ export default function PesapalPaymentVerificationPage() {
   }, [searchParams])
 
   // Helper function to format currency
-  const formatCurrency = (amount: number, currency = "KES") => {
-    const currencySymbol = currency === "USD" ? "$" : currency === "UGX" ? "UGX" : "KSh"
-    return `${currencySymbol} ${Number(amount).toLocaleString()}`
+  const formatCurrency = (amount: number, currency = "USD") => {
+    return `$ ${Number(amount).toLocaleString()}`
   }
 
   const getStatusColor = (status: string) => {

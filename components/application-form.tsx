@@ -422,7 +422,7 @@ export default function ApplicationForm() {
               </div>
               <CardTitle className="text-center text-xl sm:text-2xl">Application Submitted Successfully!</CardTitle>
               <CardDescription className="text-center text-base sm:text-lg">
-                Thank you for applying to the American Professional Management Institute of Hospitality
+                Thank you for applying to the International Institute of Hospitality Management (IIHM)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6">
